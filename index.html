@@ -51,7 +51,7 @@
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div id="inventory-section" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="p-5 border-b border-gray-100">
                 <h2 id="table-header" class="text-lg font-bold text-gray-900">...</h2>
             </div>
@@ -65,7 +65,7 @@
             </div>
         </div>
 
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div id="summary-section" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 id="summary-header" class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">...</h2>
             <div id="summary-content" class="text-gray-600"></div>
         </div>
@@ -73,7 +73,6 @@
 </div>
 
 <script>
-    // URL UNIQUE DE TON API GATEWAY AWS
     const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats"; 
 
     let dictionary = null;
@@ -85,7 +84,6 @@
         };
     }
 
-    // Événement déclenché dès que le HTML est chargé à l'écran
     window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('date-filter').value = new Date().toISOString().split('T')[0];
         
@@ -93,7 +91,6 @@
         const loginTimestamp = localStorage.getItem('parc_login_time');
         const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
 
-        // Si on trouve une session active valide de moins de 7 jours, on tente la connexion directe
         if (savedPassword && loginTimestamp && (Date.now() - loginTimestamp < oneWeekInMs)) {
             const authorized = await loadDictionary();
             if (authorized) { 
@@ -102,7 +99,6 @@
             }
         }
         
-        // Si aucun mot de passe ou session expirée, on nettoie et on bascule sur le login
         logoutSilently();
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('login-screen').classList.remove('hidden');
@@ -114,7 +110,6 @@
         hideError();
 
         try {
-            // Sauvegarde de confiance
             localStorage.setItem('parc_password', password);
             localStorage.setItem('parc_login_time', Date.now().toString());
 
@@ -164,8 +159,7 @@
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
                 <th class="px-4 py-3">${fields.model_code}</th><th class="px-4 py-3">${fields.alt_code}</th>
-                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.base_cost}</th>
-                <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
+                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th> <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
             `;
             return true;
         } catch (err) { 
@@ -176,6 +170,10 @@
     async function loadInventoryData() {
         const tbody = document.getElementById('inventory-tbody');
         const summaryDiv = document.getElementById('summary-content');
+        
+        const inventorySection = document.getElementById('inventory-section');
+        const summarySection = document.getElementById('summary-section');
+        
         const chosenDate = document.getElementById('date-filter').value;
         tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Alignement et chargement des actifs matériels...</td></tr>`;
 
@@ -185,13 +183,33 @@
                 logout(); 
                 return; 
             }
-            if (!response.ok) throw new Error(`Incident de synchronisation répertorié (${response.status})`);
             
             const data = await response.json();
+
+            // --- INTERCEPTION DE RUPTURE D'INTÉGRITÉ (Code HTTP 422 ou autre erreur) ---
+            if (!response.ok) {
+                showError(data.message || `Incident de synchronisation répertorié (${response.status})`);
+                
+                // On vide le HTML pour effacer les résidus du chargement précédent
+                tbody.innerHTML = "";
+                summaryDiv.innerHTML = "";
+                
+                // On MASQUE complètement les blocs de l'interface pour respecter l'intégrité visuelle
+                inventorySection.classList.add('hidden');
+                summarySection.classList.add('hidden');
+                return;
+            }
+            
+            // Si la réponse est valide, on s'assure de ré-afficher les blocs potentiellement masqués avant
+            hideError();
+            inventorySection.classList.remove('hidden');
+            summarySection.classList.remove('hidden');
+            
             tbody.innerHTML = "";
             
             if (!data.inventory || data.inventory.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400">Aucun actif matériel enregistré pour cette date.</td></tr>`;
+                summaryDiv.innerHTML = `<p class="text-gray-400 italic">Aucune donnée statistique à consolider.</p>`;
                 return;
             }
 
@@ -206,9 +224,9 @@
                     <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
                     <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
                     <td class="px-4 py-3 font-mono text-gray-600">${item.unit_count || 0}</td>
-                    <td class="px-4 py-3 font-mono text-gray-600">${item.base_cost ? Number(item.base_cost).toFixed(2) : '0.00'}</td>
+                    <td class="px-4 py-3 font-mono text-gray-600">${item.current_cost ? Number(item.current_cost).toFixed(2) : '0.00'} €</td>
                     <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
-                    <td class="px-4 py-3 font-bold text-gray-900">${item.live_value ? Number(item.live_value).toLocaleString('fr-FR') : '0'}</td>
+                    <td class="px-4 py-3 font-bold text-gray-900">${item.live_value ? Number(item.live_value).toLocaleString('fr-FR') : '0'} €</td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -220,7 +238,7 @@
                     html += `
                         <div class="p-4 bg-slate-50 rounded-xl border border-gray-100 flex flex-col justify-between">
                             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Groupe [${group}]</span>
-                            <span class="text-2xl font-extrabold text-slate-800 mt-1">${Number(total).toLocaleString('fr-FR')} <span class="text-sm font-normal text-gray-400">unités</span></span>
+                            <span class="text-2xl font-extrabold text-slate-800 mt-1">${Number(total).toLocaleString('fr-FR')} <span class="text-sm font-normal text-gray-400">€</span></span>
                         </div>`;
                 }
                 html += `</div>`;
@@ -229,6 +247,9 @@
         } catch (err) {
             showError(err.message);
             tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500 font-medium">Échec du chargement des données.</td></tr>`;
+            summaryDiv.innerHTML = "";
+            inventorySection.classList.add('hidden');
+            summarySection.classList.add('hidden');
         }
     }
 
