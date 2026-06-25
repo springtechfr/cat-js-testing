@@ -29,9 +29,8 @@
         </div>
         <div class="space-y-4">
             <input type="password" id="secret-input" placeholder="Mot de passe système..." 
-                   class="w-full px-4 py-3 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent">
-            <button onclick="loginWithPassword()" 
-                    class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-sm">
+                   class="w-full px-4 py-3 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-slate-500">
+            <button onclick="loginWithPassword()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-sm">
                 Connexion
             </button>
         </div>
@@ -44,11 +43,9 @@
             <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
                 <div class="flex items-center gap-2">
                     <label for="date-filter" class="text-sm font-medium text-gray-500 whitespace-nowrap">Date de situation :</label>
-                    <input type="date" id="date-filter" onchange="loadInventoryData()" 
-                           class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    <input type="date" id="date-filter" onchange="loadInventoryData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 </div>
-                <button onclick="logout()" 
-                        class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-sm py-1.5 px-4 rounded-lg transition duration-200 border border-red-200">
+                <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-sm py-1.5 px-4 rounded-lg transition duration-200 border border-red-200">
                     Déconnexion
                 </button>
             </div>
@@ -61,28 +58,23 @@
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr id="table-head-row" class="bg-slate-700 text-white text-xs font-semibold uppercase tracking-wider">
-                            </tr>
+                        <tr id="table-head-row" class="bg-slate-700 text-white text-xs font-semibold uppercase tracking-wider"></tr>
                     </thead>
-                    <tbody id="inventory-tbody" class="divide-y divide-gray-100 text-sm">
-                        </tbody>
+                    <tbody id="inventory-tbody" class="divide-y divide-gray-100 text-sm"></tbody>
                 </table>
             </div>
         </div>
 
         <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 id="summary-header" class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">...</h2>
-            <div id="summary-content" class="text-gray-600">
-                </div>
+            <div id="summary-content" class="text-gray-600"></div>
         </div>
     </div>
 </div>
 
 <script>
-    // Configurer ici l'URL de ton HTTP API Gateway AWS
-    const API_BASE_URL = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev"; 
-    const CONFIG_URL = `${API_BASE_URL}/config`;
-    const DATA_URL = `${API_BASE_URL}/cats`;
+    // URL UNIFIÉE DE TON API GATEWAY
+    const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev"; 
 
     let dictionary = null;
 
@@ -93,26 +85,21 @@
         };
     }
 
-    // Cycle d'auto-connexion au chargement de la page
     window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('date-filter').value = new Date().toISOString().split('T')[0];
         
         const savedPassword = localStorage.getItem('parc_password');
         const loginTimestamp = localStorage.getItem('parc_login_time');
         const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
-        const now = Date.now();
 
-        if (savedPassword && loginTimestamp && (now - loginTimestamp < oneWeekInMs)) {
+        if (savedPassword && loginTimestamp && (Date.now() - loginTimestamp < oneWeekInMs)) {
             const authorized = await loadDictionary();
-            if (authorized) {
-                showApp();
-                return;
-            }
+            if (authorized) { showApp(); return; }
         }
         
         logoutSilently();
-        document.getElementById('loading-screen').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden');
+        document.getElementById('loading-screen').class.add('hidden');
+        document.getElementById('login-screen').class.remove('hidden');
     });
 
     async function loginWithPassword() {
@@ -125,21 +112,18 @@
             localStorage.setItem('parc_login_time', Date.now().toString());
 
             const authorized = await loadDictionary();
-            if (authorized) {
-                showApp();
-            } else {
-                throw new Error("Mot de passe incorrect ou refusé par l'infrastructure.");
-            }
+            if (authorized) { showApp(); } 
+            else { throw new Error("Mot de passe incorrect ou refusé par l'infrastructure."); }
         } catch (err) {
             logoutSilently();
-            showError(err.message || "Erreur de négociation réseau.");
+            showError(err.message || "Erreur réseau.");
         }
     }
 
     function showApp() {
-        document.getElementById('loading-screen').classList.add('hidden');
-        document.getElementById('login-screen').classList.add('hidden');
-        document.getElementById('app-content').classList.remove('hidden');
+        document.getElementById('loading-screen').class.add('hidden');
+        document.getElementById('login-screen').class.add('hidden');
+        document.getElementById('app-content').class.remove('hidden');
         loadInventoryData();
     }
 
@@ -148,14 +132,11 @@
         localStorage.removeItem('parc_login_time');
     }
 
-    function logout() {
-        logoutSilently();
-        window.location.reload();
-    }
+    function logout() { logoutSilently(); window.location.reload(); }
 
     async function loadDictionary() {
         try {
-            const response = await fetch(CONFIG_URL, { method: 'GET', headers: getSecureHeaders() });
+            const response = await fetch(`${API_ROUTE}?action=config`, { method: 'GET', headers: getSecureHeaders() });
             if (!response.ok) return false;
             
             dictionary = await response.json();
@@ -174,34 +155,25 @@
                 <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
             `;
             return true;
-        } catch (err) {
-            return false;
-        }
+        } catch (err) { return false; }
     }
 
     async function loadInventoryData() {
         const tbody = document.getElementById('inventory-tbody');
         const summaryDiv = document.getElementById('summary-content');
         const chosenDate = document.getElementById('date-filter').value;
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Alignement et chargement des actifs matériels...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Chargement...</td></tr>`;
 
         try {
-            let url = DATA_URL;
-            if (chosenDate) url += `?date=${chosenDate}`;
-
-            const response = await fetch(url, { method: 'GET', headers: getSecureHeaders() });
-            
-            if (response.status === 401 || response.status === 403) {
-                logout(); 
-                return;
-            }
-            if (!response.ok) throw new Error(`Incident réseau répertorié (${response.status})`);
+            const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
+            if (response.status === 401 || response.status === 403) { logout(); return; }
+            if (!response.ok) throw new Error(`Incident réseau (${response.status})`);
             
             const data = await response.json();
             tbody.innerHTML = "";
             
             if (!data.inventory || data.inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400">Aucun actif matériel enregistré pour cette date.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400">Aucun actif.</td></tr>`;
                 return;
             }
 
@@ -238,17 +210,15 @@
             }
         } catch (err) {
             showError(err.message);
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500 font-medium">Une erreur est survenue lors de l'actualisation des données.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500 font-medium">Échec du chargement.</td></tr>`;
         }
     }
 
     function showError(msg) {
         const errorDiv = document.getElementById('error-msg');
-        errorDiv.innerText = msg; 
-        errorDiv.classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        errorDiv.innerText = msg; errorDiv.classList.remove('hidden');
     }
-    function hideError() { document.getElementById('error-msg').classList.add('hidden'); }
+    function hideError() { document.getElementById('error-msg').class.add('hidden'); }
 </script>
 </body>
 </html>
