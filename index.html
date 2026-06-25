@@ -73,8 +73,8 @@
 </div>
 
 <script>
-    // URL UNIFIÉE DE TON API GATEWAY
-    const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev"; 
+    // URL UNIQUE DE TON API GATEWAY AWS
+    const API_ROUTE = "https://xyz12345.execute-api.eu-west-3.amazonaws.com/cats"; 
 
     let dictionary = null;
 
@@ -85,6 +85,7 @@
         };
     }
 
+    // Événement déclenché dès que le HTML est chargé à l'écran
     window.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('date-filter').value = new Date().toISOString().split('T')[0];
         
@@ -92,14 +93,19 @@
         const loginTimestamp = localStorage.getItem('parc_login_time');
         const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
 
+        // Si on trouve une session active valide de moins de 7 jours, on tente la connexion directe
         if (savedPassword && loginTimestamp && (Date.now() - loginTimestamp < oneWeekInMs)) {
             const authorized = await loadDictionary();
-            if (authorized) { showApp(); return; }
+            if (authorized) { 
+                showApp(); 
+                return; 
+            }
         }
         
+        // Si aucun mot de passe ou session expirée, on nettoie et on bascule sur le login
         logoutSilently();
-        document.getElementById('loading-screen').class.add('hidden');
-        document.getElementById('login-screen').class.remove('hidden');
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
     });
 
     async function loginWithPassword() {
@@ -108,22 +114,26 @@
         hideError();
 
         try {
+            // Sauvegarde de confiance
             localStorage.setItem('parc_password', password);
             localStorage.setItem('parc_login_time', Date.now().toString());
 
             const authorized = await loadDictionary();
-            if (authorized) { showApp(); } 
-            else { throw new Error("Mot de passe incorrect ou refusé par l'infrastructure."); }
+            if (authorized) { 
+                showApp(); 
+            } else { 
+                throw new Error("Mot de passe incorrect ou refusé par l'infrastructure AWS."); 
+            }
         } catch (err) {
             logoutSilently();
-            showError(err.message || "Erreur réseau.");
+            showError(err.message || "Incident technique lors de la négociation réseau.");
         }
     }
 
     function showApp() {
-        document.getElementById('loading-screen').class.add('hidden');
-        document.getElementById('login-screen').class.add('hidden');
-        document.getElementById('app-content').class.remove('hidden');
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
         loadInventoryData();
     }
 
@@ -132,7 +142,10 @@
         localStorage.removeItem('parc_login_time');
     }
 
-    function logout() { logoutSilently(); window.location.reload(); }
+    function logout() { 
+        logoutSilently(); 
+        window.location.reload(); 
+    }
 
     async function loadDictionary() {
         try {
@@ -155,25 +168,30 @@
                 <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
             `;
             return true;
-        } catch (err) { return false; }
+        } catch (err) { 
+            return false; 
+        }
     }
 
     async function loadInventoryData() {
         const tbody = document.getElementById('inventory-tbody');
         const summaryDiv = document.getElementById('summary-content');
         const chosenDate = document.getElementById('date-filter').value;
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Chargement...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Alignement et chargement des actifs matériels...</td></tr>`;
 
         try {
             const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
-            if (response.status === 401 || response.status === 403) { logout(); return; }
-            if (!response.ok) throw new Error(`Incident réseau (${response.status})`);
+            if (response.status === 401 || response.status === 403) { 
+                logout(); 
+                return; 
+            }
+            if (!response.ok) throw new Error(`Incident de synchronisation répertorié (${response.status})`);
             
             const data = await response.json();
             tbody.innerHTML = "";
             
             if (!data.inventory || data.inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400">Aucun actif.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400">Aucun actif matériel enregistré pour cette date.</td></tr>`;
                 return;
             }
 
@@ -210,15 +228,19 @@
             }
         } catch (err) {
             showError(err.message);
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500 font-medium">Échec du chargement.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500 font-medium">Échec du chargement des données.</td></tr>`;
         }
     }
 
     function showError(msg) {
         const errorDiv = document.getElementById('error-msg');
-        errorDiv.innerText = msg; errorDiv.classList.remove('hidden');
+        errorDiv.innerText = msg; 
+        errorDiv.classList.remove('hidden');
     }
-    function hideError() { document.getElementById('error-msg').class.add('hidden'); }
+    
+    function hideError() { 
+        document.getElementById('error-msg').classList.add('hidden'); 
+    }
 </script>
 </body>
 </html>
