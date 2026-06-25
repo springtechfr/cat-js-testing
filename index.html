@@ -55,8 +55,10 @@
             <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
             <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="text" id="add-group-id" placeholder="Group ID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="text" id="add-type" placeholder="Category" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
+                <select id="add-group-id" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                <select id="add-type" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                
                 <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
@@ -179,7 +181,6 @@
             
             const fields = dictionary.fields;
             
-            // Appended Region header column to table HTML definition mapping
             document.getElementById('table-head-row').innerHTML = `
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
@@ -191,8 +192,6 @@
             `;
 
             document.getElementById('add-uid').placeholder = fields.uid;
-            document.getElementById('add-group-id').placeholder = fields.group_id;
-            document.getElementById('add-type').placeholder = fields.type;
             document.getElementById('add-name').placeholder = fields.model_name;
             document.getElementById('add-qty').placeholder = fields.unit_count;
             document.getElementById('add-cost').placeholder = fields.base_cost;
@@ -200,17 +199,24 @@
             document.getElementById('add-alt-code').placeholder = fields.alt_code;
             document.getElementById('add-serial').placeholder = fields.serial_number;
 
-            // Dynamically construct region selection options from backend response
-            const regionSelect = document.getElementById('add-region');
-            regionSelect.innerHTML = "";
-            if(dictionary.regions) {
-                dictionary.regions.forEach(reg => {
-                    const opt = document.createElement('option');
-                    opt.value = reg;
-                    opt.innerText = reg;
-                    regionSelect.appendChild(opt);
-                });
-            }
+            // Helper function to build select nodes dynamically from arrays
+            const populateSelect = (elementId, arrayData) => {
+                const selectElement = document.getElementById(elementId);
+                selectElement.innerHTML = "";
+                if (arrayData) {
+                    arrayData.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item;
+                        opt.innerText = item;
+                        selectElement.appendChild(opt);
+                    });
+                }
+            };
+
+            // Dynamically constructing all backend configuration driven dropdown systems
+            populateSelect('add-region', dictionary.regions);
+            populateSelect('add-group-id', dictionary.groups);
+            populateSelect('add-type', dictionary.categories);
 
             return true;
         } catch (err) { 
@@ -257,9 +263,6 @@
             }
 
             data.inventory.forEach(item => {
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-gray-50/70 transition duration-150";
-                
                 const rawCost = item.current_cost ? Number(item.current_cost) : 0;
                 const formattedCost = Math.round(rawCost).toLocaleString('en-US');
                 
@@ -274,7 +277,6 @@
                         <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
                         <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
                         <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
-                        
                         <td class="px-4 py-3 text-xs font-bold text-slate-500">${item.region || 'NONE'}</td>
                         
                         <td class="px-4 py-3 font-mono text-gray-600" id="qty-container-${item.uid}">
@@ -375,7 +377,7 @@
             model_code: document.getElementById('add-code').value,
             alt_code: document.getElementById('add-alt-code').value,
             serial_number: document.getElementById('add-serial').value,
-            region: document.getElementById('add-region').value // Raw transmission to let backend handle validation
+            region: document.getElementById('add-region').value
         };
 
         try {
@@ -390,7 +392,7 @@
                 throw new Error(fault.error || "Execution engine exception during mutation deployment.");
             }
 
-            ['add-uid', 'add-group-id', 'add-type', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
+            ['add-uid', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
                 document.getElementById(id).value = "";
             });
 
