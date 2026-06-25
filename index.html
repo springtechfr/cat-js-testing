@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title">Gestion du Parc</title>
+    <title id="page-title">Fleet Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
 
 <div class="max-w-6xl mx-auto px-4 py-8">
     
-    <div id="error-msg" class="hidden mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium"></div>
-
     <div id="loading-screen" class="flex flex-col items-center justify-center mt-32 space-y-4">
         <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-700"></div>
-        <p class="text-gray-500 italic">Vérification de la session en cours...</p>
+        <p class="text-gray-500 italic">Verifying session status...</p>
     </div>
 
     <div id="login-screen" class="hidden max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
@@ -24,14 +22,14 @@
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
             </div>
-            <h2 class="text-2xl font-bold text-gray-900">Authentification Système</h2>
-            <p class="text-gray-400 text-sm mt-1">Saisissez votre clé pour ouvrir un accès de 7 jours.</p>
+            <h2 class="text-2xl font-bold text-gray-900">System Authentication</h2>
+            <p class="text-gray-400 text-sm mt-1">Enter password to unlock operational controls.</p>
         </div>
         <div class="space-y-4">
-            <input type="password" id="secret-input" placeholder="Mot de passe système..." 
+            <input type="password" id="secret-input" placeholder="System password..." 
                    class="w-full px-4 py-3 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-slate-500">
             <button onclick="loginWithPassword()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-sm">
-                Connexion
+                Login
             </button>
         </div>
     </div>
@@ -39,14 +37,36 @@
     <div id="app-content" class="hidden space-y-6">
         
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-            <h1 id="app-title" class="text-2xl font-bold text-gray-900 tracking-tight">...</h1>
+            <h1 id="app-title" class="text-2xl font-bold text-gray-900 tracking-tight">Equipment Fleet Management</h1>
             <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
                 <div class="flex items-center gap-2">
-                    <label for="date-filter" class="text-sm font-medium text-gray-500 whitespace-nowrap">Date de situation :</label>
+                    <label for="date-filter" class="text-sm font-medium text-gray-500 whitespace-nowrap">Situation Date:</label>
                     <input type="date" id="date-filter" onchange="loadInventoryData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 </div>
                 <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-sm py-1.5 px-4 rounded-lg transition duration-200 border border-red-200">
-                    Déconnexion
+                    Sign Out
+                </button>
+            </div>
+        </div>
+
+        <div id="error-msg" class="hidden p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium transition duration-200"></div>
+
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
+            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register / Update Asset Node</h3>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <input type="text" id="add-uid" placeholder="UID (e.g. ASSET-901)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-group-id" placeholder="Group ID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-type" placeholder="Category (e.g. CPU)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <input type="text" id="add-code" placeholder="Model Ticker Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-alt-code" placeholder="Backup Code (Optional)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-serial" placeholder="Serial Number (ISIN)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <button onclick="submitAssetNode()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm">
+                    Deploy Asset Row
                 </button>
             </div>
         </div>
@@ -117,11 +137,11 @@
             if (authorized) { 
                 showApp(); 
             } else { 
-                throw new Error("Mot de passe incorrect ou refusé par l'infrastructure AWS."); 
+                throw new Error("Invalid operational configuration password or network negotiation rejected."); 
             }
         } catch (err) {
             logoutSilently();
-            showError(err.message || "Incident technique lors de la négociation réseau.");
+            showError(err.message || "Network authorization validation handshake failed.");
         }
     }
 
@@ -159,7 +179,9 @@
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
                 <th class="px-4 py-3">${fields.model_code}</th><th class="px-4 py-3">${fields.alt_code}</th>
-                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th> <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
+                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th>
+                <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
+                <th class="px-4 py-3 text-center">System Actions</th>
             `;
             return true;
         } catch (err) { 
@@ -170,12 +192,11 @@
     async function loadInventoryData() {
         const tbody = document.getElementById('inventory-tbody');
         const summaryDiv = document.getElementById('summary-content');
-        
         const inventorySection = document.getElementById('inventory-section');
         const summarySection = document.getElementById('summary-section');
-        
         const chosenDate = document.getElementById('date-filter').value;
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Alignement et chargement des matériels...</td></tr>`;
+        
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Aligning and syncing hardware assets...</td></tr>`;
 
         try {
             const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
@@ -186,36 +207,38 @@
             
             const data = await response.json();
 
-            // --- INTERCEPTION DE RUPTURE D'INTÉGRITÉ (Code HTTP 422 ou autre erreur) ---
             if (!response.ok) {
-                showError(data.message || `Incident de synchronisation répertorié (${response.status})`);
-                
-                // On vide le HTML pour effacer les résidus du chargement précédent
+                showError(data.message || `Data synchronization failure (${response.status})`);
                 tbody.innerHTML = "";
                 summaryDiv.innerHTML = "";
-                
-                // On MASQUE complètement les blocs de l'interface pour respecter l'intégrité visuelle
                 inventorySection.classList.add('hidden');
                 summarySection.classList.add('hidden');
                 return;
             }
             
-            // Si la réponse est valide, on s'assure de ré-afficher les blocs potentiellement masqués avant
             hideError();
             inventorySection.classList.remove('hidden');
             summarySection.classList.remove('hidden');
-            
             tbody.innerHTML = "";
             
             if (!data.inventory || data.inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400">Aucun actif matériel enregistré pour cette date.</td></tr>`;
-                summaryDiv.innerHTML = `<p class="text-gray-400 italic">Aucune donnée statistique à consolider.</p>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400">No hardware assets found for this date.</td></tr>`;
+                summaryDiv.innerHTML = `<p class="text-gray-400 italic">No historical data consolidated.</p>`;
                 return;
             }
 
             data.inventory.forEach(item => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-50/70 transition duration-150";
+                
+                // Formatted current_cost rounded up without trailing fractional integers, displaying base_unit instead of currency symbol
+                const rawCost = item.current_cost ? Number(item.current_cost) : 0;
+                const formattedCost = Math.round(rawCost).toLocaleString('en-US');
+                
+                // Live total estimation rounded down completely without fractional numbers
+                const rawValue = item.live_value ? Number(item.live_value) : 0;
+                const roundedLiveValue = Math.round(rawValue).toLocaleString('en-US');
+
                 tr.innerHTML = `
                     <td class="px-4 py-3 text-xs text-gray-400 font-mono">${item.uid || ''}</td>
                     <td class="px-4 py-3 font-semibold text-slate-700">${item.group_id || 'Global'}</td>
@@ -224,9 +247,14 @@
                     <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
                     <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
                     <td class="px-4 py-3 font-mono text-gray-600">${item.unit_count || 0}</td>
-                    <td class="px-4 py-3 font-mono text-gray-600">${item.current_cost ? Number(item.current_cost).toFixed(2) : '0.00'} €</td>
+                    <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${item.base_unit || ''}</span></td>
                     <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
-                    <td class="px-4 py-3 font-bold text-gray-900">${item.live_value ? Number(item.live_value).toLocaleString('fr-FR') : '0'} €</td>
+                    <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
+                    <td class="px-4 py-3 text-center">
+                        <button onclick="purgeAssetNode('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-3 rounded border border-red-200 transition">
+                            Purge
+                        </button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -235,10 +263,11 @@
             if (data.summary_totals) {
                 let html = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">`;
                 for (const [group, total] of Object.entries(data.summary_totals)) {
+                    const roundedTotal = Math.round(Number(total)).toLocaleString('en-US');
                     html += `
                         <div class="p-4 bg-slate-50 rounded-xl border border-gray-100 flex flex-col justify-between">
-                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Groupe [${group}]</span>
-                            <span class="text-2xl font-extrabold text-slate-800 mt-1">${Number(total).toLocaleString('fr-FR')} <span class="text-sm font-normal text-gray-400">€</span></span>
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Group [${group}]</span>
+                            <span class="text-2xl font-extrabold text-slate-800 mt-1">${roundedTotal} <span class="text-sm font-normal text-gray-400">€</span></span>
                         </div>`;
                 }
                 html += `</div>`;
@@ -246,10 +275,74 @@
             }
         } catch (err) {
             showError(err.message);
-            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500 font-medium">Échec du chargement des données.</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-red-500 font-medium">Failed to load data components.</td></tr>`;
             summaryDiv.innerHTML = "";
             inventorySection.classList.add('hidden');
             summarySection.classList.add('hidden');
+        }
+    }
+
+    async function submitAssetNode() {
+        hideError();
+        const payload = {
+            uid: document.getElementById('add-uid').value,
+            group_id: document.getElementById('add-group-id').value,
+            type: document.getElementById('add-type').value,
+            model_name: document.getElementById('add-name').value,
+            unit_count: document.getElementById('add-qty').value,
+            base_cost: document.getElementById('add-cost').value,
+            model_code: document.getElementById('add-code').value,
+            alt_code: document.getElementById('add-alt-code').value,
+            serial_number: document.getElementById('add-serial').value
+        };
+
+        if(!payload.uid || !payload.group_id || !payload.type || !payload.model_name || !payload.unit_count || !payload.base_cost) {
+            showError("Missing dynamic properties: All primitive matrix parameters must be specified before pipeline execution.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=push`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: json.dumps(payload)
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Execution engine exception during mutation deployment.");
+            }
+
+            // Clear configuration registration inputs
+            ['add-uid', 'add-group-id', 'add-type', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+
+            loadInventoryData();
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    async function purgeAssetNode(targetUid) {
+        if (!confirm(`Confirm irreversible data purge sequence for node: ${targetUid}?`)) return;
+        hideError();
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=purge`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: json.dumps({ target: targetUid })
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Failed to remove database asset entity records.");
+            }
+
+            loadInventoryData();
+        } catch (err) {
+            showError(err.message);
         }
     }
 
