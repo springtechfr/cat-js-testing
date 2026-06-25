@@ -52,7 +52,7 @@
         <div id="error-msg" class="hidden p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium transition duration-200"></div>
 
         <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
-            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register / Update Hardware</h3>
+            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
             <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="text" id="add-group-id" placeholder="Group ID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
@@ -66,7 +66,7 @@
                 <input type="text" id="add-alt-code" placeholder="Backup Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="text" id="add-serial" placeholder="Serial N°" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <button onclick="submitHardware()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm">
-                    Deploy Hardware
+                    Create
                 </button>
             </div>
         </div>
@@ -96,7 +96,6 @@
     const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats"; 
 
     let dictionary = null;
-    let localInventoryCache = []; // Stockage local temporaire pour l'édition en ligne
 
     function getSecureHeaders() {
         return {
@@ -177,17 +176,15 @@
             
             const fields = dictionary.fields;
             
-            // Inject structural headers inside table
             document.getElementById('table-head-row').innerHTML = `
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
                 <th class="px-4 py-3">${fields.model_code}</th><th class="px-4 py-3">${fields.alt_code}</th>
-                <th class="px-4 py-3 w-28">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th>
+                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th>
                 <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
                 <th class="px-4 py-3 text-center">System Actions</th>
             `;
 
-            // Dynamically assign field dictionary strings directly to placeholder inputs
             document.getElementById('add-uid').placeholder = fields.uid;
             document.getElementById('add-group-id').placeholder = fields.group_id;
             document.getElementById('add-type').placeholder = fields.type;
@@ -242,12 +239,8 @@
                 return;
             }
 
-            // Alimentation du cache local pour retrouver l'objet d'origine lors de la mise à jour
-            localInventoryCache = data.inventory;
-
             data.inventory.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.id = `row-${item.uid}`;
                 tr.className = "hover:bg-gray-50/70 transition duration-150";
                 
                 const rawCost = item.current_cost ? Number(item.current_cost) : 0;
@@ -263,22 +256,19 @@
                     <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
                     <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
                     <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
-                    <td class="px-4 py-3 font-mono text-gray-600">
-                        <div class="flex items-center gap-1">
-                            <input type="number" id="inline-qty-${item.uid}" value="${item.unit_count || 0}" 
-                                class="w-16 border border-gray-200 rounded px-1.5 py-0.5 text-sm font-mono text-center focus:outline-none focus:ring-1 focus:ring-slate-500">
-                            <button onclick="updateInlineQuantity('${item.uid}')" title="Sauvegarder la quantité" class="p-1 text-slate-500 hover:text-green-600 transition">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
-                                </svg>
-                            </button>
-                        </div>
+                    
+                    <td class="px-4 py-3 font-mono text-gray-600" id="qty-container-${item.uid}">
+                        <span id="qty-text-${item.uid}">${item.unit_count || 0}</span>
                     </td>
+                    
                     <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${item.base_unit || ''}</span></td>
                     <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
                     <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
-                    <td class="px-4 py-3 text-center flex items-center justify-center gap-2">
-                        <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-3 rounded border border-red-200 transition">
+                    <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
+                        <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${item.uid}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition">
+                            Edit
+                        </button>
+                        <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-2 rounded border border-red-200 transition">
                             Purge
                         </button>
                     </td>
@@ -309,33 +299,30 @@
         }
     }
 
-    async function updateInlineQuantity(uid) {
-        hideError();
-        const newQty = document.getElementById(`inline-qty-${uid}`).value;
+    function enableQtyEdit(uid) {
+        const container = document.getElementById(`qty-container-${uid}`);
+        const currentQty = document.getElementById(`qty-text-${uid}`).innerText;
         
-        // Retrouver l'élément d'origine dans le cache local pour garder les autres données intactes lors de la mise à jour
-        const originalItem = localInventoryCache.find(item => item.uid === uid);
-        if (!originalItem) {
-            showError("Impossible de retrouver l'actif dans le cache local.");
+        container.innerHTML = `<input type="number" id="input-qty-${uid}" value="${currentQty}" class="w-20 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-slate-500">`;
+        
+        const editBtn = document.getElementById(`btn-edit-${uid}`);
+        editBtn.innerText = "Save";
+        editBtn.className = "bg-green-50 hover:bg-green-100 text-green-700 font-medium text-xs py-1 px-2 rounded border border-green-200 transition";
+        editBtn.setAttribute("onclick", `saveQtyChanges('${uid}')`);
+    }
+
+    async function saveQtyChanges(uid) {
+        hideError();
+        const updatedQty = document.getElementById(`input-qty-${uid}`).value;
+
+        if(!updatedQty || Number(updatedQty) < 0) {
+            showError("Invalid quantity value.");
             return;
         }
 
-        if(!newQty || Number(newQty) < 0) {
-            showError("Veuillez saisir une quantité valide.");
-            return;
-        }
-
-        // Reconstruction du payload attendu par l'action "push" du Lambda
         const payload = {
-            uid: originalItem.uid,
-            group_id: originalItem.group_id,
-            type: originalItem.type,
-            model_name: originalItem.model_name,
-            unit_count: newQty,
-            base_cost: originalItem.base_cost, 
-            model_code: originalItem.model_code || "",
-            alt_code: originalItem.alt_code || "",
-            serial_number: originalItem.serial_number || ""
+            uid: uid,
+            unit_count: updatedQty
         };
 
         try {
@@ -347,14 +334,7 @@
 
             if(!response.ok) {
                 const fault = await response.json();
-                throw new Error(fault.error || "Exception lors de la mise à jour à la volée.");
-            }
-
-            // Flash de validation visuelle vert réussi sur la ligne de tableau
-            const targetRow = document.getElementById(`row-${uid}`);
-            if(targetRow) {
-                targetRow.classList.add('bg-green-50');
-                setTimeout(() => targetRow.classList.remove('bg-green-50'), 1000);
+                throw new Error(fault.error || "Failed to update quantity.");
             }
 
             loadInventoryData();
@@ -377,11 +357,6 @@
             serial_number: document.getElementById('add-serial').value
         };
 
-        if(!payload.uid || !payload.group_id || !payload.type || !payload.model_name || !payload.unit_count || !payload.base_cost) {
-            showError("Missing dynamic properties: All primitive matrix parameters must be specified before pipeline execution.");
-            return;
-        }
-
         try {
             const response = await fetch(`${API_ROUTE}?action=push`, {
                 method: 'POST',
@@ -394,7 +369,6 @@
                 throw new Error(fault.error || "Execution engine exception during mutation deployment.");
             }
 
-            // Clear hardware configuration registration inputs
             ['add-uid', 'add-group-id', 'add-type', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
                 document.getElementById(id).value = "";
             });
