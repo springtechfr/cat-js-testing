@@ -96,6 +96,7 @@
     const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats"; 
 
     let dictionary = null;
+    let localInventoryCache = []; // Stockage local temporaire pour l'édition en ligne
 
     function getSecureHeaders() {
         return {
@@ -181,7 +182,7 @@
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
                 <th class="px-4 py-3">${fields.model_code}</th><th class="px-4 py-3">${fields.alt_code}</th>
-                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th>
+                <th class="px-4 py-3 w-28">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th>
                 <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
                 <th class="px-4 py-3 text-center">System Actions</th>
             `;
@@ -241,15 +242,17 @@
                 return;
             }
 
+            // Alimentation du cache local pour retrouver l'objet d'origine lors de la mise à jour
+            localInventoryCache = data.inventory;
+
             data.inventory.forEach(item => {
                 const tr = document.createElement('tr');
+                tr.id = `row-${item.uid}`;
                 tr.className = "hover:bg-gray-50/70 transition duration-150";
                 
-                // Formatted current_cost rounded up without trailing fractional decimals
                 const rawCost = item.current_cost ? Number(item.current_cost) : 0;
                 const formattedCost = Math.round(rawCost).toLocaleString('en-US');
                 
-                // Live total estimation rounded down completely without fractional numbers
                 const rawValue = item.live_value ? Number(item.live_value) : 0;
                 const roundedLiveValue = Math.round(rawValue).toLocaleString('en-US');
 
@@ -260,11 +263,21 @@
                     <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
                     <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
                     <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
-                    <td class="px-4 py-3 font-mono text-gray-600">${item.unit_count || 0}</td>
+                    <td class="px-4 py-3 font-mono text-gray-600">
+                        <div class="flex items-center gap-1">
+                            <input type="number" id="inline-qty-${item.uid}" value="${item.unit_count || 0}" 
+                                class="w-16 border border-gray-200 rounded px-1.5 py-0.5 text-sm font-mono text-center focus:outline-none focus:ring-1 focus:ring-slate-500">
+                            <button onclick="updateInlineQuantity('${item.uid}')" title="Sauvegarder la quantité" class="p-1 text-slate-500 hover:text-green-600 transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
                     <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${item.base_unit || ''}</span></td>
                     <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
                     <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
-                    <td class="px-4 py-3 text-center">
+                    <td class="px-4 py-3 text-center flex items-center justify-center gap-2">
                         <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-3 rounded border border-red-200 transition">
                             Purge
                         </button>
@@ -293,6 +306,60 @@
             summaryDiv.innerHTML = "";
             inventorySection.classList.add('hidden');
             summarySection.classList.add('hidden');
+        }
+    }
+
+    async function updateInlineQuantity(uid) {
+        hideError();
+        const newQty = document.getElementById(`inline-qty-${uid}`).value;
+        
+        // Retrouver l'élément d'origine dans le cache local pour garder les autres données intactes lors de la mise à jour
+        const originalItem = localInventoryCache.find(item => item.uid === uid);
+        if (!originalItem) {
+            showError("Impossible de retrouver l'actif dans le cache local.");
+            return;
+        }
+
+        if(!newQty || Number(newQty) < 0) {
+            showError("Veuillez saisir une quantité valide.");
+            return;
+        }
+
+        // Reconstruction du payload attendu par l'action "push" du Lambda
+        const payload = {
+            uid: originalItem.uid,
+            group_id: originalItem.group_id,
+            type: originalItem.type,
+            model_name: originalItem.model_name,
+            unit_count: newQty,
+            base_cost: originalItem.base_cost, 
+            model_code: originalItem.model_code || "",
+            alt_code: originalItem.alt_code || "",
+            serial_number: originalItem.serial_number || ""
+        };
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=push`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Exception lors de la mise à jour à la volée.");
+            }
+
+            // Flash de validation visuelle vert réussi sur la ligne de tableau
+            const targetRow = document.getElementById(`row-${uid}`);
+            if(targetRow) {
+                targetRow.classList.add('bg-green-50');
+                setTimeout(() => targetRow.classList.remove('bg-green-50'), 1000);
+            }
+
+            loadInventoryData();
+        } catch (err) {
+            showError(err.message);
         }
     }
 
