@@ -175,7 +175,7 @@
         const summarySection = document.getElementById('summary-section');
         
         const chosenDate = document.getElementById('date-filter').value;
-        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Alignement et chargement des actifs matériels...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Alignement et chargement des matériels...</td></tr>`;
 
         try {
             const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
