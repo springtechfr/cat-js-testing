@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Gestion du Parc</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+<div class="max-w-6xl mx-auto px-4 py-8">
+    
+    <div id="error-msg" class="hidden mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium"></div>
+
+    <div id="loading-screen" class="flex flex-col items-center justify-center mt-32 space-y-4">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-700"></div>
+        <p class="text-gray-500 italic">Vérification de la session en cours...</p>
+    </div>
+
+    <div id="login-screen" class="hidden max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
+        <div class="mb-6">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 text-slate-700 mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900">Authentification Système</h2>
+            <p class="text-gray-400 text-sm mt-1">Saisissez votre clé pour ouvrir un accès de 7 jours.</p>
+        </div>
+        <div class="space-y-4">
+            <input type="password" id="secret-input" placeholder="Mot de passe système..." 
+                   class="w-full px-4 py-3 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent">
+            <button onclick="loginWithPassword()" 
+                    class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-sm">
+                Connexion
+            </button>
+        </div>
+    </div>
+
+    <div id="app-content" class="hidden space-y-6">
+        
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 id="app-title" class="text-2xl font-bold text-gray-900 tracking-tight">...</h1>
+            <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
+                <div class="flex items-center gap-2">
+                    <label for="date-filter" class="text-sm font-medium text-gray-500 whitespace-nowrap">Date de situation :</label>
+                    <input type="date" id="date-filter" onchange="loadInventoryData()" 
+                           class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                </div>
+                <button onclick="logout()" 
+                        class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-sm py-1.5 px-4 rounded-lg transition duration-200 border border-red-200">
+                    Déconnexion
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-5 border-b border-gray-100">
+                <h2 id="table-header" class="text-lg font-bold text-gray-900">...</h2>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr id="table-head-row" class="bg-slate-700 text-white text-xs font-semibold uppercase tracking-wider">
+                            </tr>
+                    </thead>
+                    <tbody id="inventory-tbody" class="divide-y divide-gray-100 text-sm">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 id="summary-header" class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">...</h2>
+            <div id="summary-content" class="text-gray-600">
+                </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configurer ici l'URL de ton HTTP API Gateway AWS
+    const API_BASE_URL = "https://xyz12345.execute-api.eu-west-3.amazonaws.com"; 
+    const CONFIG_URL = `${API_BASE_URL}/config`;
+    const DATA_URL = `${API_BASE_URL}/cats`;
+
+    let dictionary = null;
+
+    function getSecureHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'X-Poste-Config': localStorage.getItem('parc_password') || ''
+        };
+    }
+
+    // Cycle d'auto-connexion au chargement de la page
+    window.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('date-filter').value = new Date().toISOString().split('T')[0];
+        
+        const savedPassword = localStorage.getItem('parc_password');
+        const loginTimestamp = localStorage.getItem('parc_login_time');
+        const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
+        const now = Date.now();
+
+        if (savedPassword && loginTimestamp && (now - loginTimestamp < oneWeekInMs)) {
+            const authorized = await loadDictionary();
+            if (authorized) {
+                showApp();
+                return;
+            }
+        }
+        
+        logoutSilently();
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+    });
+
+    async function loginWithPassword() {
+        const password = document.getElementById('secret-input').value;
+        if (!password) return;
+        hideError();
+
+        try {
+            localStorage.setItem('parc_password', password);
+            localStorage.setItem('parc_login_time', Date.now().toString());
+
+            const authorized = await loadDictionary();
+            if (authorized) {
+                showApp();
+            } else {
+                throw new Error("Mot de passe incorrect ou refusé par l'infrastructure.");
+            }
+        } catch (err) {
+            logoutSilently();
+            showError(err.message || "Erreur de négociation réseau.");
+        }
+    }
+
+    function showApp() {
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
+        loadInventoryData();
+    }
+
+    function logoutSilently() {
+        localStorage.removeItem('parc_password');
+        localStorage.removeItem('parc_login_time');
+    }
+
+    function logout() {
+        logoutSilently();
+        window.location.reload();
+    }
+
+    async function loadDictionary() {
+        try {
+            const response = await fetch(CONFIG_URL, { method: 'GET', headers: getSecureHeaders() });
+            if (!response.ok) return false;
+            
+            dictionary = await response.json();
+            
+            document.getElementById('page-title').innerText = dictionary.titles.app_title;
+            document.getElementById('app-title').innerText = dictionary.titles.app_title;
+            document.getElementById('table-header').innerText = dictionary.titles.table_header;
+            document.getElementById('summary-header').innerText = dictionary.titles.summary_header;
+            
+            const fields = dictionary.fields;
+            document.getElementById('table-head-row').innerHTML = `
+                <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
+                <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
+                <th class="px-4 py-3">${fields.model_code}</th><th class="px-4 py-3">${fields.alt_code}</th>
+                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.base_cost}</th>
+                <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
+            `;
+            return true;
+        } catch (err) {
+            return false;
+        }
+    }
+
+    async function loadInventoryData() {
+        const tbody = document.getElementById('inventory-tbody');
+        const summaryDiv = document.getElementById('summary-content');
+        const chosenDate = document.getElementById('date-filter').value;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Alignement et chargement des actifs matériels...</td></tr>`;
+
+        try {
+            let url = DATA_URL;
+            if (chosenDate) url += `?date=${chosenDate}`;
+
+            const response = await fetch(url, { method: 'GET', headers: getSecureHeaders() });
+            
+            if (response.status === 401 || response.status === 403) {
+                logout(); 
+                return;
+            }
+            if (!response.ok) throw new Error(`Incident réseau répertorié (${response.status})`);
+            
+            const data = await response.json();
+            tbody.innerHTML = "";
+            
+            if (!data.inventory || data.inventory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-gray-400">Aucun actif matériel enregistré pour cette date.</td></tr>`;
+                return;
+            }
+
+            data.inventory.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50/70 transition duration-150";
+                tr.innerHTML = `
+                    <td class="px-4 py-3 text-xs text-gray-400 font-mono">${item.uid || ''}</td>
+                    <td class="px-4 py-3 font-semibold text-slate-700">${item.group_id || 'Global'}</td>
+                    <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">${item.type || ''}</span></td>
+                    <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
+                    <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
+                    <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
+                    <td class="px-4 py-3 font-mono text-gray-600">${item.unit_count || 0}</td>
+                    <td class="px-4 py-3 font-mono text-gray-600">${item.base_cost ? Number(item.base_cost).toFixed(2) : '0.00'}</td>
+                    <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
+                    <td class="px-4 py-3 font-bold text-gray-900">${item.live_value ? Number(item.live_value).toLocaleString('fr-FR') : '0'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            summaryDiv.innerHTML = "";
+            if (data.summary_totals) {
+                let html = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">`;
+                for (const [group, total] of Object.entries(data.summary_totals)) {
+                    html += `
+                        <div class="p-4 bg-slate-50 rounded-xl border border-gray-100 flex flex-col justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Groupe [${group}]</span>
+                            <span class="text-2xl font-extrabold text-slate-800 mt-1">${Number(total).toLocaleString('fr-FR')} <span class="text-sm font-normal text-gray-400">unités</span></span>
+                        </div>`;
+                }
+                html += `</div>`;
+                summaryDiv.innerHTML = html;
+            }
+        } catch (err) {
+            showError(err.message);
+            tbody.innerHTML = `<tr><td colspan="10" class="text-center py-8 text-red-500 font-medium">Une erreur est survenue lors de l'actualisation des données.</td></tr>`;
+        }
+    }
+
+    function showError(msg) {
+        const errorDiv = document.getElementById('error-msg');
+        errorDiv.innerText = msg; 
+        errorDiv.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function hideError() { document.getElementById('error-msg').classList.add('hidden'); }
+</script>
+</body>
+</html>
