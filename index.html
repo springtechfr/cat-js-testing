@@ -210,7 +210,7 @@
         const summarySection = document.getElementById('summary-section');
         const chosenDate = document.getElementById('date-filter').value;
         
-        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Aligning and syncing hardware assets...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Aligning and syncing hardware...</td></tr>`;
 
         try {
             const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
@@ -236,7 +236,7 @@
             tbody.innerHTML = "";
             
             if (!data.inventory || data.inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400">No hardware assets found for this date.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-gray-400">No hardware found for this date.</td></tr>`;
                 summaryDiv.innerHTML = `<p class="text-gray-400 italic">No historical data consolidated.</p>`;
                 return;
             }
