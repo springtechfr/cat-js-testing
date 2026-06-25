@@ -52,21 +52,21 @@
         <div id="error-msg" class="hidden p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium transition duration-200"></div>
 
         <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
-            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register / Update Asset Node</h3>
+            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register / Update Hardware</h3>
             <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
-                <input type="text" id="add-uid" placeholder="UID (e.g. ASSET-901)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="text" id="add-group-id" placeholder="Group ID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="text" id="add-type" placeholder="Category (e.g. CPU)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-type" placeholder="Category" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
             </div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <input type="text" id="add-code" placeholder="Model Ticker Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="text" id="add-alt-code" placeholder="Backup Code (Optional)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="text" id="add-serial" placeholder="Serial Number (ISIN)" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <button onclick="submitAssetNode()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm">
-                    Deploy Asset Row
+                <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-alt-code" placeholder="Backup Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-serial" placeholder="Serial N°" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <button onclick="submitHardware()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm">
+                    Deploy Hardware
                 </button>
             </div>
         </div>
@@ -175,6 +175,8 @@
             document.getElementById('summary-header').innerText = dictionary.titles.summary_header;
             
             const fields = dictionary.fields;
+            
+            // Inject structural headers inside table
             document.getElementById('table-head-row').innerHTML = `
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
@@ -183,6 +185,18 @@
                 <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
                 <th class="px-4 py-3 text-center">System Actions</th>
             `;
+
+            // Dynamically assign field dictionary strings directly to placeholder inputs
+            document.getElementById('add-uid').placeholder = fields.uid;
+            document.getElementById('add-group-id').placeholder = fields.group_id;
+            document.getElementById('add-type').placeholder = fields.type;
+            document.getElementById('add-name').placeholder = fields.model_name;
+            document.getElementById('add-qty').placeholder = fields.unit_count;
+            document.getElementById('add-cost').placeholder = fields.base_cost;
+            document.getElementById('add-code').placeholder = fields.model_code;
+            document.getElementById('add-alt-code').placeholder = fields.alt_code;
+            document.getElementById('add-serial').placeholder = fields.serial_number;
+
             return true;
         } catch (err) { 
             return false; 
@@ -231,7 +245,7 @@
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-gray-50/70 transition duration-150";
                 
-                // Formatted current_cost rounded up without trailing fractional integers, displaying base_unit instead of currency symbol
+                // Formatted current_cost rounded up without trailing fractional decimals
                 const rawCost = item.current_cost ? Number(item.current_cost) : 0;
                 const formattedCost = Math.round(rawCost).toLocaleString('en-US');
                 
@@ -251,7 +265,7 @@
                     <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
                     <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
                     <td class="px-4 py-3 text-center">
-                        <button onclick="purgeAssetNode('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-3 rounded border border-red-200 transition">
+                        <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-3 rounded border border-red-200 transition">
                             Purge
                         </button>
                     </td>
@@ -282,7 +296,7 @@
         }
     }
 
-    async function submitAssetNode() {
+    async function submitHardware() {
         hideError();
         const payload = {
             uid: document.getElementById('add-uid').value,
@@ -305,7 +319,7 @@
             const response = await fetch(`${API_ROUTE}?action=push`, {
                 method: 'POST',
                 headers: getSecureHeaders(),
-                body: json.dumps(payload)
+                body: JSON.stringify(payload)
             });
 
             if(!response.ok) {
@@ -313,7 +327,7 @@
                 throw new Error(fault.error || "Execution engine exception during mutation deployment.");
             }
 
-            // Clear configuration registration inputs
+            // Clear hardware configuration registration inputs
             ['add-uid', 'add-group-id', 'add-type', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
                 document.getElementById(id).value = "";
             });
@@ -324,7 +338,7 @@
         }
     }
 
-    async function purgeAssetNode(targetUid) {
+    async function purgeHardware(targetUid) {
         if (!confirm(`Confirm irreversible data purge sequence for node: ${targetUid}?`)) return;
         hideError();
 
@@ -332,12 +346,12 @@
             const response = await fetch(`${API_ROUTE}?action=purge`, {
                 method: 'POST',
                 headers: getSecureHeaders(),
-                body: json.dumps({ target: targetUid })
+                body: JSON.stringify({ target: targetUid })
             });
 
             if(!response.ok) {
                 const fault = await response.json();
-                throw new Error(fault.error || "Failed to remove database asset entity records.");
+                throw new Error(fault.error || "Failed to remove database hardware entity records.");
             }
 
             loadInventoryData();
