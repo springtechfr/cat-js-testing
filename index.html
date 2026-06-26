@@ -18,242 +18,98 @@
     <div id="login-screen" class="hidden max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
         <div class="mb-6">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 text-slate-700 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
             </div>
-            <h2 class="text-xl font-bold text-gray-900">Node Management Portal</h2>
-            <p class="text-sm text-gray-500">Authentication mandatory</p>
+            <h2 class="text-2xl font-bold text-gray-900">System Authentication</h2>
+            <p class="text-gray-400 text-sm mt-1">Enter password to unlock operational controls.</p>
         </div>
-        <input type="password" id="auth-token" placeholder="Authorization token" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 mb-4 text-center">
-        <button onclick="handleLogin()" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-medium py-2 px-4 rounded-lg transition duration-200 shadow-sm">Initialize</button>
+        <div class="space-y-4">
+            <input type="password" id="secret-input" placeholder="System password..." 
+                   class="w-full px-4 py-3 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-slate-500">
+            <button onclick="loginWithPassword()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-sm">
+                Login
+            </button>
+        </div>
     </div>
 
-    <div id="main-screen" class="hidden space-y-8">
-        <div class="flex justify-between items-center border-b border-gray-200 pb-5">
-            <div>
-                <h1 id="app-heading" class="text-2xl font-bold tracking-tight text-gray-900">Infrastructure Inventory</h1>
-                <p class="text-sm text-gray-500 mt-1">Multi-group asset aggregation and telemetry metrics</p>
-            </div>
-            <button onclick="handleLogout()" class="text-sm text-gray-500 hover:text-red-600 font-medium transition">Terminate Session</button>
-        </div>
+    <div id="error-msg" class="hidden my-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium transition duration-200"></div>
 
-        <div id="error-msg" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg text-sm text-red-700 shadow-sm"></div>
-
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <h2 id="form-heading" class="text-lg font-semibold text-gray-900 mb-4">Register New Entity</h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                    <label id="lbl-group" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Group ID</label>
-                    <select id="add-group" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 bg-white text-sm"></select>
+    <div id="app-content" class="hidden space-y-6">
+        
+        <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h1 id="app-title" class="text-2xl font-bold text-gray-900 tracking-tight">Equipment Fleet Management</h1>
+            <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
+                <div class="flex items-center gap-2">
+                    <label for="date-filter" class="text-sm font-medium text-gray-500 whitespace-nowrap">Situation Date:</label>
+                    <input type="date" id="date-filter" onchange="loadInventoryData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 </div>
-                <div>
-                    <label id="lbl-type" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Asset Classification</label>
-                    <select id="add-type" onchange="handleTypeChange()" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 bg-white text-sm"></select>
-                </div>
-                <div>
-                    <label id="lbl-uid" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Unique Identifier</label>
-                    <input type="text" id="add-uid" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">
-                </div>
-                <div>
-                    <label id="lbl-name" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Label Name</label>
-                    <input type="text" id="add-name" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">
-                </div>
-                <div>
-                    <label id="lbl-qty" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Quantity / Allocation</label>
-                    <input type="number" step="any" id="add-qty" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">
-                </div>
-                <div>
-                    <label id="lbl-cost" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Acquisition Cost</label>
-                    <input type="number" step="any" id="add-cost" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">
-                </div>
-                <div>
-                    <label id="lbl-base-unit" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Base Unit</label>
-                    <select id="add-base-unit" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 bg-white text-sm"></select>
-                </div>
-                <div>
-                    <label id="lbl-region" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Deployment Region</label>
-                    <select id="add-region" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 bg-white text-sm"></select>
-                </div>
-                <div>
-                    <label id="lbl-code" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">System Code</label>
-                    <input type="text" id="add-code" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">
-                </div>
-                <div>
-                    <label id="lbl-alt-code" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Backup Code</label>
-                    <input type="text" id="add-alt-code" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">
-                </div>
-                <div class="sm:col-span-2">
-                    <label id="lbl-serial" class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Serial Number</label>
-                    <input type="text" id="add-serial" class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-1 focus:ring-slate-500 text-sm">
-                </div>
-            </div>
-            <div class="mt-4 flex justify-end">
-                <button onclick="registerHardware()" class="bg-slate-800 hover:bg-slate-900 text-white text-sm font-medium py-2 px-6 rounded-lg transition duration-200 shadow-sm">Commit Database Record</button>
+                <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-sm py-1.5 px-4 rounded-lg transition duration-200 border border-red-200">
+                    Sign Out
+                </button>
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 flex flex-wrap justify-between items-center gap-4 bg-gray-50">
-                <h2 id="table-heading" class="text-lg font-semibold text-gray-900">Active Node Topologies</h2>
-                <div class="flex items-center space-y-0 space-x-4">
-                    <span id="lbl-summary" class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Metrics Consolidation:</span>
-                    <div id="stats-container" class="flex space-x-3 text-sm font-medium text-gray-700"></div>
+        <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
+            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
+                <select id="add-group-id" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                <select id="add-type" onchange="handleTypeChange()" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                
+                <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
+                <div class="flex gap-1">
+                    <input type="number" step="0.01" id="add-cost" placeholder="Unit Cost" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                    <select id="add-base-unit" class="border border-gray-200 rounded-lg px-1 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
                 </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                <input type="text" id="add-alt-code" placeholder="Backup Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                <input type="text" id="add-serial" placeholder="Serial N°" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                
+                <select id="add-region" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400"></select>
+                
+                <button onclick="submitHardware()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm">
+                    Create
+                </button>
+            </div>
+        </div>
+
+        <div id="inventory-section" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-5 border-b border-gray-100">
+                <h2 id="table-header" class="text-lg font-bold text-gray-900">...</h2>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
-                        <tr id="table-headers" class="border-b border-gray-200 bg-white text-xs font-semibold uppercase tracking-wider text-gray-500"></tr>
+                        <tr id="table-head-row" class="bg-slate-700 text-white text-xs font-semibold uppercase tracking-wider"></tr>
                     </thead>
-                    <tbody id="inventory-table-body" class="divide-y divide-gray-100 bg-white text-sm text-gray-700"></tbody>
+                    <tbody id="inventory-tbody" class="divide-y divide-gray-100 text-sm"></tbody>
                 </table>
             </div>
+        </div>
+
+        <div id="summary-section" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <h2 id="summary-header" class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">...</h2>
+            <div id="summary-content" class="text-gray-600"></div>
         </div>
     </div>
 </div>
 
 <script>
-    const API_ROUTE = 'https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats';
+    const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats"; 
     let dictionary = null;
-
-    window.addEventListener('DOMContentLoaded', async () => {
-        const secret = localStorage.getItem('fleet_session_token');
-        if (secret) {
-            document.getElementById('auth-token').value = secret;
-            await initializeSystem();
-        } else {
-            transitionScreen('login-screen');
-        }
-    });
-
-    function transitionScreen(target) {
-        ['loading-screen', 'login-screen', 'main-screen'].forEach(id => {
-            document.getElementById(id).classList.add('hidden');
-        });
-        document.getElementById(target).classList.remove('hidden');
-    }
-
-    async function handleLogin() {
-        const token = document.getElementById('auth-token').value.trim();
-        if(!token) return alert('Token value missing');
-        localStorage.setItem('fleet_session_token', token);
-        await initializeSystem();
-    }
-
-    function handleLogout() {
-        localStorage.removeItem('fleet_session_token');
-        document.getElementById('auth-token').value = "";
-        transitionScreen('login-screen');
-    }
 
     function getSecureHeaders() {
         return {
             'Content-Type': 'application/json',
-            'X-Poste-Config': localStorage.getItem('fleet_session_token') || ''
+            'X-Poste-Config': localStorage.getItem('parc_password') || ''
         };
-    }
-
-    async function initializeSystem() {
-        transitionScreen('loading-screen');
-        hideError();
-        try {
-            const response = await fetch(`${API_ROUTE}?action=config`, {
-                method: 'GET',
-                headers: getSecureHeaders()
-            });
-            if(!response.ok) throw new Error('Authorization rejected or config load error');
-            
-            dictionary = await response.json();
-            applyLanguageOverlay();
-            populateFormDropdowns();
-            handleTypeChange();
-            await loadInventoryData();
-            transitionScreen('main-screen');
-        } catch(err) {
-            showError(err.message);
-            transitionScreen('login-screen');
-        }
-    }
-
-    function applyLanguageOverlay() {
-        if(!dictionary) return;
-        if(dictionary.title) document.getElementById('page-title').innerText = dictionary.title;
-        if(dictionary.heading) document.getElementById('app-heading').innerText = dictionary.heading;
-        if(dictionary.form_title) document.getElementById('form-heading').innerText = dictionary.form_title;
-        if(dictionary.table_title) document.getElementById('table-heading').innerText = dictionary.table_title;
-
-        if(dictionary.fields) {
-            const f = dictionary.fields;
-            if(f.group_id) document.getElementById('lbl-group').innerText = f.group_id;
-            if(f.type) document.getElementById('lbl-type').innerText = f.type;
-            if(f.id) document.getElementById('lbl-uid').innerText = f.id;
-            if(f.model_name) document.getElementById('lbl-name').innerText = f.model_name;
-            if(f.qty) document.getElementById('lbl-qty').innerText = f.qty;
-            if(f.base_cost) document.getElementById('lbl-cost').innerText = f.base_cost;
-            document.getElementById('lbl-base-unit').innerText = "Base Unit";
-            if(f.region) document.getElementById('lbl-region').innerText = f.region;
-            if(f.model_code) document.getElementById('lbl-code').innerText = f.model_code;
-            if(f.alt_code) document.getElementById('lbl-alt-code').innerText = f.alt_code;
-            if(f.serial_number) document.getElementById('lbl-serial').innerText = f.serial_number;
-        }
-
-        const headersRow = document.getElementById('table-headers');
-        headersRow.innerHTML = '';
-        if(dictionary.table_columns) {
-            dictionary.table_columns.forEach(col => {
-                const th = document.createElement('th');
-                th.className = "px-6 py-3";
-                th.innerText = (col === "Currency" || col === "currency") ? "Unit" : col;
-                headersRow.appendChild(th);
-            });
-            const thAction = document.createElement('th');
-            thAction.className = "px-6 py-3 text-right";
-            thAction.innerText = "Operations";
-            headersRow.appendChild(thAction);
-        }
-    }
-
-    function populateFormDropdowns() {
-        if(!dictionary) return;
-        
-        const groupSel = document.getElementById('add-group');
-        groupSel.innerHTML = '';
-        if(dictionary.portfolios) {
-            dictionary.portfolios.forEach(p => {
-                const opt = document.createElement('option');
-                opt.value = p.id; opt.innerText = p.label;
-                groupSel.appendChild(opt);
-            });
-        }
-
-        const typeSel = document.getElementById('add-type');
-        typeSel.innerHTML = '';
-        if(dictionary.categories) {
-            dictionary.categories.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c.id; opt.innerText = c.label;
-                typeSel.appendChild(opt);
-            });
-        }
-
-        const baseUnitSel = document.getElementById('add-base-unit');
-        baseUnitSel.innerHTML = '';
-        if(dictionary.currencies) {
-            dictionary.currencies.forEach(cur => {
-                const opt = document.createElement('option');
-                opt.value = cur; opt.innerText = cur;
-                baseUnitSel.appendChild(opt);
-            });
-        }
-
-        const regionSel = document.getElementById('add-region');
-        regionSel.innerHTML = '';
-        if(dictionary.regions) {
-            dictionary.regions.forEach(r => {
-                const opt = document.createElement('option');
-                opt.value = r; opt.innerText = r;
-                regionSel.appendChild(opt);
-            });
-        }
     }
 
     function handleTypeChange() {
@@ -261,142 +117,342 @@
         const codeInput = document.getElementById('add-code');
         const altCodeInput = document.getElementById('add-alt-code');
         const baseUnitSelect = document.getElementById('add-base-unit');
-        const regionSelect = document.getElementById('add-region');
+        const costInput = document.getElementById('add-cost');
         const serialInput = document.getElementById('add-serial');
-        
+        const regionSelect = document.getElementById('add-region');
+
         if (typeSelect.value && typeSelect.value.startsWith('CA')) {
             codeInput.disabled = true;
-            altCodeInput.disabled = true;
             codeInput.value = '';
-            altCodeInput.value = '';
             codeInput.placeholder = "N/A";
-            altCodeInput.placeholder = "N/A";
-            
-            regionSelect.value = "NONE";
-            regionSelect.disabled = true;
-            regionSelect.classList.add('bg-gray-100', 'text-gray-400');
-            
-            serialInput.placeholder = "N/A";
-            serialInput.required = false;
 
+            altCodeInput.disabled = true;
+            altCodeInput.value = '';
+            altCodeInput.placeholder = "N/A";
+
+            costInput.disabled = true;
+            costInput.value = '';
+            costInput.placeholder = "N/A";
+
+            serialInput.disabled = true;
+            serialInput.value = '';
+            serialInput.placeholder = "N/A";
+
+            regionSelect.disabled = true;
+            regionSelect.value = "NONE"; // Force la région à NONE dans l'UI
+            
             baseUnitSelect.disabled = false;
             baseUnitSelect.classList.remove('bg-gray-100', 'text-gray-400');
         } else {
             codeInput.disabled = false;
             altCodeInput.disabled = false;
-            regionSelect.disabled = false;
-            regionSelect.classList.remove('bg-gray-100', 'text-gray-400');
-            baseUnitSelect.disabled = false; 
+            costInput.disabled = false;
+			serialInput.disabled = false;
+			regionSelect.disabled = false;
+			
+            if (dictionary && dictionary.base_units && dictionary.base_units.length > 0) {
+                baseUnitSelect.value = dictionary.base_units[0]; 
+            }
             
             if (dictionary && dictionary.fields) {
                 codeInput.placeholder = dictionary.fields.model_code;
                 altCodeInput.placeholder = dictionary.fields.alt_code;
+				costInput.placeholder = dictionary.fields.base_cost;
                 serialInput.placeholder = dictionary.fields.serial_number;
             }
         }
     }
 
-    async function loadInventoryData() {
+    window.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('date-filter').value = new Date().toISOString().split('T')[0];
+        
+        const savedPassword = localStorage.getItem('parc_password');
+        const loginTimestamp = localStorage.getItem('parc_login_time');
+        const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
+
+        if (savedPassword && loginTimestamp && (Date.now() - loginTimestamp < oneWeekInMs)) {
+            try {
+                const authorized = await loadDictionary();
+                if (authorized) { 
+                    showApp(); 
+                    return; 
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        showLogin();
+    });
+
+    async function loginWithPassword() {
+        const password = document.getElementById('secret-input').value;
+        if (!password) return;
         hideError();
+
+        document.getElementById('loading-screen').classList.remove('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
+
         try {
-            const response = await fetch(`${API_ROUTE}?action=list`, {
-                method: 'GET',
-                headers: getSecureHeaders()
-            });
-            if(!response.ok) throw new Error('Failed to retrieve active topologies.');
+            localStorage.setItem('parc_password', password);
+            localStorage.setItem('parc_login_time', Date.now().toString());
+
+            const authorized = await loadDictionary();
+            if (authorized) { 
+                showApp(); 
+            } else { 
+                throw new Error("Invalid credentials."); 
+            }
+        } catch (err) {
+            showLogin();
+            showError(err.message || "Authentication failed.");
+        }
+    }
+
+    function showApp() {
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
+        loadInventoryData();
+    }
+
+    function showLogin() {
+        logoutSilently();
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+    }
+
+    function logoutSilently() {
+        localStorage.removeItem('parc_password');
+        localStorage.removeItem('parc_login_time');
+    }
+
+    function logout() { 
+        logoutSilently(); 
+        window.location.reload(); 
+    }
+
+    async function loadDictionary() {
+        try {
+            const response = await fetch(`${API_ROUTE}?action=config`, { method: 'GET', headers: getSecureHeaders() });
+            if (!response.ok) return false;
             
-            const payload = await response.json();
-            renderTableRecords(payload.assets || []);
-            renderConsolidationStats(payload.aggregations || {});
-        } catch(err) {
+            dictionary = await response.json();
+            
+            document.getElementById('page-title').innerText = dictionary.titles.app_title;
+            document.getElementById('app-title').innerText = dictionary.titles.app_title;
+            document.getElementById('table-header').innerText = dictionary.titles.table_header;
+            document.getElementById('summary-header').innerText = dictionary.titles.summary_header;
+            
+            const fields = dictionary.fields;
+            
+            document.getElementById('table-head-row').innerHTML = `
+                <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
+                <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
+                <th class="px-4 py-3">${fields.model_code}</th><th class="px-4 py-3">${fields.alt_code}</th>
+                <th class="px-4 py-3">${fields.region}</th>
+                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th>
+                <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
+                <th class="px-4 py-3 text-center">Actions</th>
+            `;
+
+            document.getElementById('add-uid').placeholder = fields.uid;
+            document.getElementById('add-name').placeholder = fields.model_name;
+            document.getElementById('add-qty').placeholder = fields.unit_count;
+            document.getElementById('add-cost').placeholder = fields.base_cost;
+            document.getElementById('add-code').placeholder = fields.model_code;
+            document.getElementById('add-alt-code').placeholder = fields.alt_code;
+            document.getElementById('add-serial').placeholder = fields.serial_number;
+
+            const populateSelect = (elementId, arrayData) => {
+                const selectElement = document.getElementById(elementId);
+                selectElement.innerHTML = "";
+                if (arrayData) {
+                    arrayData.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item;
+                        opt.innerText = item; 
+                        selectElement.appendChild(opt);
+                    });
+                }
+            };
+
+            populateSelect('add-region', dictionary.regions);
+            populateSelect('add-group-id', dictionary.groups);
+            populateSelect('add-type', dictionary.categories);
+            populateSelect('add-base-unit', dictionary.base_units); 
+
+            handleTypeChange();
+            return true;
+        } catch (err) { 
+            return false; 
+        }
+    }
+
+    async function loadInventoryData() {
+        const tbody = document.getElementById('inventory-tbody');
+        const summaryDiv = document.getElementById('summary-content');
+        const inventorySection = document.getElementById('inventory-section');
+        const summarySection = document.getElementById('summary-section');
+        const chosenDate = document.getElementById('date-filter').value;
+        
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Syncing...</td></tr>`;
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
+            if (response.status === 401 || response.status === 403) { 
+                logout(); 
+                return; 
+            }
+            
+            const data = await response.json();
+
+            if (!response.ok) {
+                showError(data.message || `Error (${response.status})`);
+                tbody.innerHTML = "";
+                summaryDiv.innerHTML = "";
+                inventorySection.classList.add('hidden');
+                summarySection.classList.add('hidden');
+                return;
+            }
+            
+			if (data.warning_message) {
+                showError(data.warning_message);
+            }
+
+            inventorySection.classList.remove('hidden');
+            summarySection.classList.remove('hidden');
+            tbody.innerHTML = "";
+            
+            if (!data.inventory || data.inventory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400">No hardware found for this date.</td></tr>`;
+                summaryDiv.innerHTML = `<p class="text-gray-400 italic">No data consolidated.</p>`;
+                return;
+            }
+
+            data.inventory.forEach(item => {
+                const rawCost = item.current_cost ? Number(item.current_cost) : 0;
+                const formattedCost = rawCost.toFixed(2);
+                
+                const rawValue = item.live_value ? Number(item.live_value) : 0;
+                const roundedLiveValue = Math.round(rawValue).toLocaleString('en-US');
+
+                const isSecuredType = item.type && item.type.startsWith('CA');
+                const displayCode = isSecuredType ? item.type : (item.model_code || '-');
+                const displayAltCode = isSecuredType ? item.type : (item.alt_code || '-');
+                const displayUnit = item.base_unit || 'EUR';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/70 transition duration-150">
+                        <td class="px-4 py-3 text-xs text-gray-400 font-mono">${item.uid || ''}</td>
+                        <td class="px-4 py-3 font-semibold text-slate-700">${item.group_id || 'Global'}</td>
+                        <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">${item.type || ''}</span></td>
+                        <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
+                        <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${displayCode}</code></td>
+                        <td class="px-4 py-3 text-xs text-gray-500">${displayAltCode}</td>
+                        <td class="px-4 py-3 text-xs font-bold text-slate-500">${item.region || 'NONE'}</td>
+                        
+                        <td class="px-4 py-3 font-mono text-gray-600" id="qty-container-${item.uid}">
+                            <span id="qty-text-${item.uid}">${item.unit_count || 0}</span>
+                        </td>
+                        
+                        <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${displayUnit}</span></td>
+                        <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
+                        <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
+                        <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
+                            <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${item.uid}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition">
+                                Edit
+                            </button>
+                            <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-2 rounded border border-red-200 transition">
+                                Purge
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            summaryDiv.innerHTML = "";
+            if (data.summary_totals) {
+                let html = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">`;
+                for (const [group, total] of Object.entries(data.summary_totals)) {
+                    const roundedTotal = Math.round(Number(total)).toLocaleString('en-US');
+                    html += `
+                        <div class="p-4 bg-slate-50 rounded-xl border border-gray-100 flex flex-col justify-between">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Group [${group}]</span>
+                            <span class="text-2xl font-extrabold text-slate-800 mt-1">${roundedTotal} <span class="text-sm font-normal text-gray-400">€</span></span>
+                        </div>`;
+                }
+                html += `</div>`;
+                summaryDiv.innerHTML = html;
+            }
+        } catch (err) {
+            showError(err.message);
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-red-500 font-medium">Error loading data.</td></tr>`;
+            summaryDiv.innerHTML = "";
+            inventorySection.classList.add('hidden');
+            summarySection.classList.add('hidden');
+        }
+    }
+
+    function enableQtyEdit(uid) {
+        const container = document.getElementById(`qty-container-${uid}`);
+        const currentQty = document.getElementById(`qty-text-${uid}`).innerText;
+        
+        container.innerHTML = `<input type="number" id="input-qty-${uid}" value="${currentQty}" class="w-20 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-slate-500">`;
+        
+        const editBtn = document.getElementById(`btn-edit-${uid}`);
+        editBtn.innerText = "Save";
+        editBtn.className = "bg-green-50 hover:bg-green-100 text-green-700 font-medium text-xs py-1 px-2 rounded border border-green-200 transition";
+        editBtn.setAttribute("onclick", `saveQtyChanges('${uid}')`);
+    }
+
+    async function saveQtyChanges(uid) {
+        hideError();
+        const updatedQty = document.getElementById(`input-qty-${uid}`).value;
+
+        if(!updatedQty || Number(updatedQty) < 0) {
+            showError("Invalid quantity value.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=push`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: JSON.stringify({ uid: uid, unit_count: updatedQty })
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Failed to update quantity.");
+            }
+
+            loadInventoryData();
+        } catch (err) {
             showError(err.message);
         }
     }
 
-    function renderConsolidationStats(aggs) {
-        const container = document.getElementById('stats-container');
-        container.innerHTML = '';
-        if(!aggs || Object.keys(aggs).length === 0) return;
-
-        Object.entries(aggs).forEach(([unit, val]) => {
-            const span = document.createElement('span');
-            span.className = "bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 text-xs font-bold text-slate-800 shadow-sm";
-            span.innerText = `${Number(val).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})} ${unit}`;
-            container.appendChild(span);
-        });
-    }
-
-    function renderTableRecords(assets) {
-        const tBody = document.getElementById('inventory-table-body');
-        tBody.innerHTML = '';
-
-        if(assets.length === 0) {
-            tBody.innerHTML = `<tr><td colspan="${(dictionary?.table_columns?.length || 5) + 1}" class="px-6 py-8 text-center text-gray-400 italic">No nodes registered in this network footprint.</td></tr>`;
-            return;
-        }
-
-        assets.forEach(node => {
-            const tr = document.createElement('tr');
-            tr.className = "hover:bg-gray-50 transition duration-150";
-
-            if(dictionary && dictionary.table_columns) {
-                dictionary.table_columns.forEach(col => {
-                    const td = document.createElement('td');
-                    td.className = "px-6 py-3.5 whitespace-nowrap";
-                    
-                    let key = col.toLowerCase().replace(/ /g, '_');
-                    if (key === 'unit' || key === 'currency') key = 'base_currency';
-                    
-                    let val = node[key];
-                    if (val === undefined || val === null) {
-                        if (key === 'group') val = node['portfolio_id'];
-                        else if (key === 'label_name') val = node['symbol'];
-                        else if (key === 'system_code') val = node['ticker'];
-                        else if (key === 'backup_code') val = node['proxy_ticker'];
-                        else if (key === 'acquisition_cost') val = node['purchase_price'];
-                        else val = '-';
-                    }
-
-                    if(typeof val === 'number' || (!isNaN(val) && !isNaN(parseFloat(val)) && (key === 'qty' || key === 'acquisition_cost' || key === 'valuation' || key === 'purchase_price'))) {
-                        td.innerText = Number(val).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 4});
-                    } else {
-                        td.innerText = val;
-                    }
-                    tr.appendChild(td);
-                });
-            }
-
-            const tdAction = document.createElement('td');
-            tdAction.className = "px-6 py-3.5 whitespace-nowrap text-right";
-            tdAction.innerHTML = `<button onclick="purgeHardware('${node.id}')" class="text-xs bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-1 px-2.5 border border-red-200 rounded transition">Purge Node</button>`;
-            tr.appendChild(tdAction);
-
-            tBody.appendChild(tr);
-        });
-    }
-
-    async function registerHardware() {
+    async function submitHardware() {
         hideError();
+        const baseUnitSelect = document.getElementById('add-base-unit');
+        
         const payload = {
-            group_id: document.getElementById('add-group').value,
+            uid: document.getElementById('add-uid').value,
+            group_id: document.getElementById('add-group-id').value,
             type: document.getElementById('add-type').value,
-            target: document.getElementById('add-uid').value.trim(),
-            model_name: document.getElementById('add-name').value.trim(),
-            allocation: document.getElementById('add-qty').value.trim(),
-            base_cost: document.getElementById('add-cost').value.trim(),
-            base_unit: document.getElementById('add-base-unit').value,
+            model_name: document.getElementById('add-name').value,
+            unit_count: document.getElementById('add-qty').value,
+            base_cost: document.getElementById('add-cost').value,
+            model_code: document.getElementById('add-code').value,
+            alt_code: document.getElementById('add-alt-code').value,
+            serial_number: document.getElementById('add-serial').value,
             region: document.getElementById('add-region').value,
-            model_code: document.getElementById('add-code').value.trim(),
-            alt_code: document.getElementById('add-alt-code').value.trim(),
-            serial_number: document.getElementById('add-serial').value.trim()
+            base_unit: baseUnitSelect.value 
         };
 
-        if(!payload.target || !payload.model_name || !payload.allocation || !payload.base_cost) {
-            return alert('All primary descriptors are core dependencies.');
-        }
-
         try {
-            const response = await fetch(`${API_ROUTE}?action=commit`, {
+            const response = await fetch(`${API_ROUTE}?action=push`, {
                 method: 'POST',
                 headers: getSecureHeaders(),
                 body: JSON.stringify(payload)
