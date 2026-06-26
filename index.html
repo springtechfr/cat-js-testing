@@ -55,27 +55,28 @@
             <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
             <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
                 <select id="add-group-id" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
-                <select id="add-type" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                <select id="add-type" onchange="handleTypeChange()" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                
                 <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <div class="flex gap-1">
-                    <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                    <select id="add-base-unit" class="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-500 font-bold text-slate-600"></select>
-                </div>
+                <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
             </div>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="text" id="add-alt-code" placeholder="Backup Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                <input type="text" id="add-alt-code" placeholder="Backup Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
                 <input type="text" id="add-serial" placeholder="Serial N°" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
                 <select id="add-region" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                
                 <button onclick="submitHardware()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm">
                     Create
                 </button>
             </div>
         </div>
 
-        <div id="inventory-section" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div id="inventory-section" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="p-5 border-b border-gray-100">
                 <h2 id="table-header" class="text-lg font-bold text-gray-900">...</h2>
             </div>
@@ -89,7 +90,7 @@
             </div>
         </div>
 
-        <div id="summary-section" class="hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div id="summary-section" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 id="summary-header" class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">...</h2>
             <div id="summary-content" class="text-gray-600"></div>
         </div>
@@ -107,38 +108,55 @@
         };
     }
 
-    // --- SÉCURISATION DU CYCLE DE DÉMARRAGE (BOOT SEQUENCE) ---
+    // Protection par détection de préfixe (évite d'écrire "CASH" dans le code)
+    function handleTypeChange() {
+        const typeSelect = document.getElementById('add-type');
+        const codeInput = document.getElementById('add-code');
+        const altCodeInput = document.getElementById('add-alt-code');
+        
+        if (typeSelect.value && typeSelect.value.startsWith('CA')) {
+            codeInput.disabled = true;
+            altCodeInput.disabled = true;
+            codeInput.value = '';
+            altCodeInput.value = '';
+            codeInput.placeholder = "N/A";
+            altCodeInput.placeholder = "N/A";
+        } else {
+            codeInput.disabled = false;
+            altCodeInput.disabled = false;
+            if (dictionary && dictionary.fields) {
+                codeInput.placeholder = dictionary.fields.model_code;
+                altCodeInput.placeholder = dictionary.fields.alt_code;
+            }
+        }
+    }
+
     window.addEventListener('DOMContentLoaded', async () => {
-        // Initialisation de la date du jour
         document.getElementById('date-filter').value = new Date().toISOString().split('T')[0];
         
         const savedPassword = localStorage.getItem('parc_password');
         const loginTimestamp = localStorage.getItem('parc_login_time');
         const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
 
-        // Si une session valide existe localement, on tente de charger le dictionnaire directement
         if (savedPassword && loginTimestamp && (Date.now() - loginTimestamp < oneWeekInMs)) {
             try {
-                const isConfigLoaded = await loadDictionary();
-                if (isConfigLoaded) { 
-                    showAppScreen(); 
+                const authorized = await loadDictionary();
+                if (authorized) { 
+                    showApp(); 
                     return; 
                 }
             } catch (err) {
-                console.error("Boot routine exception caught:", err);
+                console.error("Boot routine error:", err);
             }
         }
-        
-        // Sécurité critique : Si pas de session ou si loadDictionary échoue, on bascule obligatoirement sur l'écran Login
-        showLoginScreen();
+        showLogin();
     });
 
     async function loginWithPassword() {
         const password = document.getElementById('secret-input').value;
         if (!password) return;
         hideError();
-        
-        // Affichage du spinner pendant la tentative d'authentification
+
         document.getElementById('loading-screen').classList.remove('hidden');
         document.getElementById('login-screen').classList.add('hidden');
 
@@ -146,27 +164,26 @@
             localStorage.setItem('parc_password', password);
             localStorage.setItem('parc_login_time', Date.now().toString());
 
-            const isConfigLoaded = await loadDictionary();
-            if (isConfigLoaded) { 
-                showAppScreen(); 
+            const authorized = await loadDictionary();
+            if (authorized) { 
+                showApp(); 
             } else { 
-                throw new Error("Invalid credentials or configuration validation handshake rejected."); 
+                throw new Error("Invalid network security signature or bad credentials."); 
             }
         } catch (err) {
-            showLoginScreen();
-            showError(err.message || "Network negotiation failure.");
+            showLogin();
+            showError(err.message || "Network credentials validation handshake failed.");
         }
     }
 
-    // Gestion propre des affichages d'écrans pour casser les scénarios de gel (stuck)
-    function showAppScreen() {
+    function showApp() {
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-content').classList.remove('hidden');
         loadInventoryData();
     }
 
-    function showLoginScreen() {
+    function showLogin() {
         logoutSilently();
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('app-content').classList.add('hidden');
@@ -186,23 +203,17 @@
     async function loadDictionary() {
         try {
             const response = await fetch(`${API_ROUTE}?action=config`, { method: 'GET', headers: getSecureHeaders() });
-            
-            if (!response.ok) {
-                if(response.status === 401 || response.status === 403) {
-                    return false; // Mauvais mot de passe détecté par l'API gateway
-                }
-                throw new Error(`Server configuration failure (Status: ${response.status})`);
-            }
+            if (!response.ok) return false;
             
             dictionary = await response.json();
             
-            // Remplissage dynamique des textes issus de l'API
             document.getElementById('page-title').innerText = dictionary.titles.app_title;
             document.getElementById('app-title').innerText = dictionary.titles.app_title;
             document.getElementById('table-header').innerText = dictionary.titles.table_header;
             document.getElementById('summary-header').innerText = dictionary.titles.summary_header;
             
             const fields = dictionary.fields;
+            
             document.getElementById('table-head-row').innerHTML = `
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
@@ -228,7 +239,7 @@
                     arrayData.forEach(item => {
                         const opt = document.createElement('option');
                         opt.value = item;
-                        opt.innerText = item;
+                        opt.innerText = item; // Affiche "CASH" dynamiquement si l'API l'envoie
                         selectElement.appendChild(opt);
                     });
                 }
@@ -237,12 +248,12 @@
             populateSelect('add-region', dictionary.regions);
             populateSelect('add-group-id', dictionary.groups);
             populateSelect('add-type', dictionary.categories);
-            populateSelect('add-base-unit', dictionary.currencies);
 
+            handleTypeChange();
             return true;
         } catch (err) { 
-            console.error("Failed to parse config schema payload:", err);
-            throw err; // On propage l'erreur pour forcer le basculement en écran de login avec erreur
+            console.error("Parsing schema failure:", err);
+            return false; 
         }
     }
 
@@ -253,7 +264,7 @@
         const summarySection = document.getElementById('summary-section');
         const chosenDate = document.getElementById('date-filter').value;
         
-        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Aligning and syncing data...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Aligning and syncing hardware...</td></tr>`;
 
         try {
             const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
@@ -279,8 +290,8 @@
             tbody.innerHTML = "";
             
             if (!data.inventory || data.inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400">No assets found for this date.</td></tr>`;
-                summaryDiv.innerHTML = `<p class="text-gray-400 italic">No operational metrics consolidated.</p>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400">No hardware found for this date.</td></tr>`;
+                summaryDiv.innerHTML = `<p class="text-gray-400 italic">No historical data consolidated.</p>`;
                 return;
             }
 
@@ -291,24 +302,35 @@
                 const rawValue = item.live_value ? Number(item.live_value) : 0;
                 const roundedLiveValue = Math.round(rawValue).toLocaleString('en-US');
 
+                // Utilisation sélective du préfixe pour masquer le code technique si nécessaire
+                const isSecuredType = item.type && item.type.startsWith('CA');
+                const displayCode = isSecuredType ? item.type : (item.model_code || '-');
+                const displayAltCode = isSecuredType ? item.type : (item.alt_code || '-');
+
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50/70 transition duration-150">
                         <td class="px-4 py-3 text-xs text-gray-400 font-mono">${item.uid || ''}</td>
                         <td class="px-4 py-3 font-semibold text-slate-700">${item.group_id || 'Global'}</td>
                         <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">${item.type || ''}</span></td>
                         <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
-                        <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
-                        <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
+                        <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${displayCode}</code></td>
+                        <td class="px-4 py-3 text-xs text-gray-500">${displayAltCode}</td>
                         <td class="px-4 py-3 text-xs font-bold text-slate-500">${item.region || 'NONE'}</td>
+                        
                         <td class="px-4 py-3 font-mono text-gray-600" id="qty-container-${item.uid}">
                             <span id="qty-text-${item.uid}">${item.unit_count || 0}</span>
                         </td>
-                        <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${item.base_unit || ''}</span></td>
+                        
+                        <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${item.base_unit || 'EUR'}</span></td>
                         <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
                         <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
                         <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
-                            <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${item.uid}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition">Edit</button>
-                            <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-2 rounded border border-red-200 transition">Purge</button>
+                            <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${item.uid}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition">
+                                Edit
+                            </button>
+                            <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-2 rounded border border-red-200 transition">
+                                Purge
+                            </button>
                         </td>
                     </tr>
                 `;
@@ -340,6 +362,7 @@
     function enableQtyEdit(uid) {
         const container = document.getElementById(`qty-container-${uid}`);
         const currentQty = document.getElementById(`qty-text-${uid}`).innerText;
+        
         container.innerHTML = `<input type="number" id="input-qty-${uid}" value="${currentQty}" class="w-20 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-slate-500">`;
         
         const editBtn = document.getElementById(`btn-edit-${uid}`);
@@ -368,6 +391,7 @@
                 const fault = await response.json();
                 throw new Error(fault.error || "Failed to update quantity.");
             }
+
             loadInventoryData();
         } catch (err) {
             showError(err.message);
@@ -383,7 +407,6 @@
             model_name: document.getElementById('add-name').value,
             unit_count: document.getElementById('add-qty').value,
             base_cost: document.getElementById('add-cost').value,
-            base_unit: document.getElementById('add-base-unit').value,
             model_code: document.getElementById('add-code').value,
             alt_code: document.getElementById('add-alt-code').value,
             serial_number: document.getElementById('add-serial').value,
@@ -405,6 +428,7 @@
             ['add-uid', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
                 document.getElementById(id).value = "";
             });
+
             loadInventoryData();
         } catch (err) {
             showError(err.message);
@@ -424,8 +448,9 @@
 
             if(!response.ok) {
                 const fault = await response.json();
-                throw new Error(fault.error || "Failed to remove database asset record.");
+                throw new Error(fault.error || "Failed to remove database hardware entity records.");
             }
+
             loadInventoryData();
         } catch (err) {
             showError(err.message);
