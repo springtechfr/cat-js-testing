@@ -415,4 +415,71 @@
         
         const payload = {
             uid: document.getElementById('add-uid').value,
-            group_id: document.getElementById('add-group
+            group_id: document.getElementById('add-group-id').value,
+            type: document.getElementById('add-type').value,
+            model_name: document.getElementById('add-name').value,
+            unit_count: document.getElementById('add-qty').value,
+            base_cost: document.getElementById('add-cost').value,
+            model_code: document.getElementById('add-code').value,
+            alt_code: document.getElementById('add-alt-code').value,
+            serial_number: document.getElementById('add-serial').value,
+            region: document.getElementById('add-region').value,
+            custom_currency: currencySelect.value 
+        };
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=push`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Exception during deployment.");
+            }
+
+            ['add-uid', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+
+            loadInventoryData();
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    async function purgeHardware(targetUid) {
+        if (!confirm(`Confirm irreversible purge sequence for node: ${targetUid}?`)) return;
+        hideError();
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=purge`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: JSON.stringify({ target: targetUid })
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Failed to remove records.");
+            }
+
+            loadInventoryData();
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    function showError(msg) {
+        const errorDiv = document.getElementById('error-msg');
+        errorDiv.innerText = msg; 
+        errorDiv.classList.remove('hidden');
+    }
+    
+    function hideError() { 
+        document.getElementById('error-msg').classList.add('hidden'); 
+    }
+</script>
+</body>
+</html>
