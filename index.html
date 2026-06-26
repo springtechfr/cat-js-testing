@@ -61,7 +61,10 @@
                 
                 <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <div class="flex gap-1">
+                    <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    <select id="add-base-unit" class="border border-gray-200 rounded-lg px-2 py-2 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-slate-500 font-bold text-slate-600"></select>
+                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
@@ -217,6 +220,7 @@
             populateSelect('add-region', dictionary.regions);
             populateSelect('add-group-id', dictionary.groups);
             populateSelect('add-type', dictionary.categories);
+            populateSelect('add-base-unit', dictionary.currencies); // Injection dynamique de l'array devises
 
             return true;
         } catch (err) { 
@@ -374,6 +378,7 @@
             model_name: document.getElementById('add-name').value,
             unit_count: document.getElementById('add-qty').value,
             base_cost: document.getElementById('add-cost').value,
+            base_unit: document.getElementById('add-base-unit').value,  # Inclusion de la devise choisie
             model_code: document.getElementById('add-code').value,
             alt_code: document.getElementById('add-alt-code').value,
             serial_number: document.getElementById('add-serial').value,
