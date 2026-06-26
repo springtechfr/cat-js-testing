@@ -249,7 +249,6 @@
             const fields = dictionary.fields;
             
             document.getElementById('table-head-row').innerHTML = `
-                <th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th>
 				<th class="px-4 py-3">${fields.model_name}</th>
                 <th class="px-4 py-3">${fields.model_code}</th>
@@ -293,7 +292,7 @@
         }
     }
 
-    async function loadInventoryData() {
+	async function loadInventoryData() {
         const tbody = document.getElementById('inventory-tbody');
         const summaryDiv = document.getElementById('summary-content');
         const inventorySection = document.getElementById('inventory-section');
@@ -310,7 +309,7 @@
             }
             
             const data = await response.json();
-			const fields = dictionary.fields;
+            const fields = dictionary.fields;
 
             if (!response.ok) {
                 showError(data.message || `Error (${response.status})`);
@@ -321,7 +320,7 @@
                 return;
             }
             
-			if (data.warning_message) {
+            if (data.warning_message) {
                 showError(data.warning_message);
             }
 
@@ -335,29 +334,77 @@
                 return;
             }
 
-			data.inventory.forEach(item => {
+            // Appel des fonctions spécialisées pour le rendu
+            groupAndRenderInventory(data.inventory, fields, tbody);
+            renderSummary(data.summary_totals, summaryDiv);
+
+        } catch (err) {
+            showError(err.message);
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-red-500 font-medium">Error loading data.</td></tr>`;
+            summaryDiv.innerHTML = "";
+            inventorySection.classList.add('hidden');
+            summarySection.classList.add('hidden');
+        }
+    }
+
+	function groupAndRenderInventory(inventory, fields, tbody) {
+        // 1. Regroupement par group_id
+        const groups = {};
+        inventory.forEach(item => {
+            const groupId = item.group_id || 'Global';
+            if (!groups[groupId]) {
+                groups[groupId] = { items: [], totalValue: 0 };
+            }
+            groups[groupId].items.push(item);
+            groups[groupId].totalValue += item.live_value ? Number(item.live_value) : 0;
+        });
+
+        // 2. Rendu HTML dans le tbody
+        let isFirstGroup = true;
+
+        for (const [groupId, groupData] of Object.entries(groups)) {
+            const formattedGroupTotal = Math.round(groupData.totalValue).toLocaleString(userLocale);
+
+            // Si ce n'est pas le premier groupe, on ajoute un espace léger pour séparer les blocs
+            if (!isFirstGroup) {
+                tbody.innerHTML += `<tr class="h-6 bg-transparent"><td colspan="8"></td></tr>`;
+            }
+            isFirstGroup = false;
+
+            // En-tête du groupe avec le titre à gauche et le total à droite sur la même ligne
+            tbody.innerHTML += `
+                <tr class="bg-slate-100/90 border-b border-gray-200 font-bold text-slate-800 rounded-t-lg">
+                    <td colspan="6" class="px-4 py-2.5 tracking-wide">
+                        ${groupId}
+                    </td>
+                    <td class="px-4 py-2.5 font-extrabold text-slate-900 text-right whitespace-nowrap">
+                        Total : ${formattedGroupTotal} €
+                    </td>
+                    <td></td>
+                </tr>
+            `;
+
+            // Lignes enfants des équipements associés à ce groupe
+            groupData.items.forEach(item => {
                 const rawCost = item.current_cost ? Number(item.current_cost) : 0;
                 const formattedCost = rawCost.toLocaleString(userLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 
                 const rawValue = item.live_value ? Number(item.live_value) : 0;
                 const roundedLiveValue = Math.round(rawValue).toLocaleString(userLocale);
-				
-				const rawQty = item.unit_count ? Number(item.unit_count) : 0;
+                
+                const rawQty = item.unit_count ? Number(item.unit_count) : 0;
                 const formattedQty = rawQty.toLocaleString(userLocale);
-				
+                
                 const isSecuredType = item.type && item.type.startsWith('CA');
                 const displayCode = isSecuredType ? item.type : (item.model_code || '-');
                 const displayUnit = item.base_unit || 'UNKNOWN';
                 
-                // Échappement des chaînes pour éviter les bugs d'injection dans la fonction JS
                 const safeUid = (item.uid || '').replace(/'/g, "\\'");
                 const safeAltCode = (item.alt_code || '-').replace(/'/g, "\\'");
                 const safeSerialNumber = (item.serial_number || '-').replace(/'/g, "\\'");
 
-                // Ligne Principale Épurée
                 tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50/70 transition duration-150 border-b border-gray-100">
-                        <td class="px-4 py-3 font-semibold text-slate-700">${item.group_id || 'Global'}</td>
+                    <tr class="hover:bg-gray-50/70 transition duration-150 border-b border-gray-100 bg-white">
                         <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">${item.type || ''}</span></td>
                         <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
                         <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${displayCode}</code></td>
@@ -377,8 +424,8 @@
                         </td>
                     </tr>
                     
-					<tr id="details-row-${item.uid}" class="hidden bg-slate-50/70">
-                        <td colspan="7" class="px-6 py-4 border-t border-b border-dashed border-gray-200">
+                    <tr id="details-row-${item.uid}" class="hidden bg-slate-50/70">
+                        <td colspan="6" class="px-6 py-4 border-t border-b border-dashed border-gray-200">
                             <div class="grid grid-cols-1 sm:grid-cols-4 gap-x-8 gap-y-2 text-gray-600 text-xs">
                                 <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.uid || 'ID'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${item.uid || ''}</code></div>
                                 <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.alt_code || 'Backup Code'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${safeAltCode}</code></div>
@@ -404,28 +451,74 @@
                     </tr>
                 `;
             });
-
-            summaryDiv.innerHTML = "";
-            if (data.summary_totals) {
-                let html = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">`;
-                for (const [group, total] of Object.entries(data.summary_totals)) {
-                    const roundedTotal = Math.round(Number(total)).toLocaleString(userLocale);;
-                    html += `
-                        <div class="p-4 bg-slate-50 rounded-xl border border-gray-100 flex flex-col justify-between">
-                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Group [${group}]</span>
-                            <span class="text-2xl font-extrabold text-slate-800 mt-1">${roundedTotal} <span class="text-sm font-normal text-gray-400">€</span></span>
-                        </div>`;
-                }
-                html += `</div>`;
-                summaryDiv.innerHTML = html;
-            }
-        } catch (err) {
-            showError(err.message);
-            tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-red-500 font-medium">Error loading data.</td></tr>`;
-            summaryDiv.innerHTML = "";
-            inventorySection.classList.add('hidden');
-            summarySection.classList.add('hidden');
         }
+    }
+
+	function renderSummary(totals, summaryDiv) {
+        summaryDiv.innerHTML = "";
+        if (!totals) return;
+
+        // On récupère le total global brut pour le calcul des pourcentages
+        const rawGrandTotal = totals.grand_total ? Number(totals.grand_total) : 0;
+        let html = `<div class="space-y-6">`;
+
+        // 1. Rendu de la Valeur Totale Globale
+        if (totals.grand_total !== undefined) {
+            const grandTotal = totals.grand_total.toLocaleString(userLocale);
+            html += `
+                <div class="p-5 bg-slate-800 text-white rounded-xl shadow-sm">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Valeur Totale Globale</h4>
+                    <p class="text-3xl font-black mt-1">${grandTotal} €</p>
+                </div>
+            `;
+        }
+
+        // 2. Rendu des statistiques par Type
+        if (totals.stats_by_type && Object.keys(totals.stats_by_type).length > 0) {
+            let typeHtml = "";
+            for (const [type, total] of Object.entries(totals.stats_by_type)) {
+                const rawTotal = Number(total);
+                const pct = rawGrandTotal > 0 ? ((rawTotal / rawGrandTotal) * 100).toFixed(2) : "0.00";
+                
+                typeHtml += `
+                    <div class="p-3 bg-blue-50/50 rounded-lg border border-blue-100 flex flex-col justify-between">
+                        <span class="text-xs font-semibold text-blue-700 uppercase">${type}</span>
+                        <div class="mt-0.5 flex items-baseline gap-1.5 flex-wrap">
+                            <span class="text-lg font-bold text-slate-800">${rawTotal.toLocaleString(userLocale)} €</span>
+                            <span class="text-xs font-medium text-slate-500">(${pct}%)</span>
+                        </div>
+                    </div>`;
+            }
+            html += `<div>
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Montant par Type</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">${typeHtml}</div>
+            </div>`;
+        }
+
+        // 3. Rendu des statistiques par Région
+        if (totals.stats_by_region && Object.keys(totals.stats_by_region).length > 0) {
+            let regionHtml = "";
+            for (const [region, total] of Object.entries(totals.stats_by_region)) {
+                const rawTotal = Number(total);
+                const pct = rawGrandTotal > 0 ? ((rawTotal / rawGrandTotal) * 100).toFixed(2) : "0.00";
+
+                regionHtml += `
+                    <div class="p-3 bg-emerald-50/50 rounded-lg border border-emerald-100 flex flex-col justify-between">
+                        <span class="text-xs font-semibold text-emerald-700 uppercase">${region}</span>
+                        <div class="mt-0.5 flex items-baseline gap-1.5 flex-wrap">
+                            <span class="text-lg font-bold text-slate-800">${rawTotal.toLocaleString(userLocale)} €</span>
+                            <span class="text-xs font-medium text-slate-500">(${pct}%)</span>
+                        </div>
+                    </div>`;
+            }
+            html += `<div>
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Montant par Région</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">${regionHtml}</div>
+            </div>`;
+        }
+
+        html += `</div>`;
+        summaryDiv.innerHTML = html;
     }
 
 	function enableQtyEdit(uid) {
