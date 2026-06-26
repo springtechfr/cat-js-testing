@@ -104,6 +104,7 @@
 <script>
     const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats"; 
     let dictionary = null;
+	const userLocale = navigator.language || "fr-FR";
 
     function getSecureHeaders() {
         return {
@@ -139,7 +140,7 @@
             serialInput.placeholder = "N/A";
 
             regionSelect.disabled = true;
-            regionSelect.value = "NONE"; // Force la région à NONE dans l'UI
+            regionSelect.value = "NONE";
             
             baseUnitSelect.disabled = false;
             baseUnitSelect.classList.remove('bg-gray-100', 'text-gray-400');
@@ -247,13 +248,15 @@
             const fields = dictionary.fields;
             
             document.getElementById('table-head-row').innerHTML = `
-                <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
-                <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
-                <th class="px-4 py-3">${fields.model_code}</th><th class="px-4 py-3">${fields.alt_code}</th>
+                <th class="px-4 py-3">${fields.group_id}</th>
+                <th class="px-4 py-3">${fields.type}</th>
+				<th class="px-4 py-3">${fields.model_name}</th>
+                <th class="px-4 py-3">${fields.model_code}</th>
                 <th class="px-4 py-3">${fields.region}</th>
-                <th class="px-4 py-3">${fields.unit_count}</th><th class="px-4 py-3">${fields.current_cost}</th>
-                <th class="px-4 py-3">${fields.serial_number}</th><th class="px-4 py-3">${fields.live_value}</th>
-                <th class="px-4 py-3 text-center">Actions</th>
+                <th class="px-4 py-3 text-right">${fields.unit_count}</th>
+				<th class="px-4 py-3 text-right">${fields.current_cost}</th>
+                <th class="px-4 py-3 text-right">${fields.live_value}</th>
+                <th class="px-4 py-3 text-center">Détails</th>
             `;
 
             document.getElementById('add-uid').placeholder = fields.uid;
@@ -306,6 +309,7 @@
             }
             
             const data = await response.json();
+			const fields = dictionary.fields;
 
             if (!response.ok) {
                 showError(data.message || `Error (${response.status})`);
@@ -330,42 +334,71 @@
                 return;
             }
 
-            data.inventory.forEach(item => {
+			data.inventory.forEach(item => {
                 const rawCost = item.current_cost ? Number(item.current_cost) : 0;
-                const formattedCost = rawCost.toFixed(2);
+                const formattedCost = rawCost.toLocaleString(userLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 
                 const rawValue = item.live_value ? Number(item.live_value) : 0;
-                const roundedLiveValue = Math.round(rawValue).toLocaleString('en-US');
-
+                const roundedLiveValue = Math.round(rawValue).toLocaleString(userLocale);
+				
+				const rawQty = item.unit_count ? Number(item.unit_count) : 0;
+                const formattedQty = rawQty.toLocaleString(userLocale);
+				
                 const isSecuredType = item.type && item.type.startsWith('CA');
                 const displayCode = isSecuredType ? item.type : (item.model_code || '-');
-                const displayAltCode = isSecuredType ? item.type : (item.alt_code || '-');
-                const displayUnit = item.base_unit || 'EUR';
+                const displayUnit = item.base_unit || 'UNKNOWN';
+                
+                // Échappement des chaînes pour éviter les bugs d'injection dans la fonction JS
+                const safeUid = (item.uid || '').replace(/'/g, "\\'");
+                const safeAltCode = (item.alt_code || '-').replace(/'/g, "\\'");
+                const safeSerialNumber = (item.serial_number || '-').replace(/'/g, "\\'");
 
+                // Ligne Principale Épurée
                 tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50/70 transition duration-150">
-                        <td class="px-4 py-3 text-xs text-gray-400 font-mono">${item.uid || ''}</td>
+                    <tr class="hover:bg-gray-50/70 transition duration-150 border-b border-gray-100">
                         <td class="px-4 py-3 font-semibold text-slate-700">${item.group_id || 'Global'}</td>
                         <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-50 text-blue-700">${item.type || ''}</span></td>
                         <td class="px-4 py-3 text-gray-900">${item.model_name || ''}</td>
                         <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${displayCode}</code></td>
-                        <td class="px-4 py-3 text-xs text-gray-500">${displayAltCode}</td>
                         <td class="px-4 py-3 text-xs font-bold text-slate-500">${item.region || 'NONE'}</td>
                         
-                        <td class="px-4 py-3 font-mono text-gray-600" id="qty-container-${item.uid}">
-                            <span id="qty-text-${item.uid}">${item.unit_count || 0}</span>
+                        <td class="px-4 py-3 font-mono text-gray-600 text-right" id="qty-container-${item.uid}">
+                            <span id="qty-text-${item.uid}">${formattedQty}</span>
                         </td>
                         
-                        <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${displayUnit}</span></td>
-                        <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
-                        <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
-                        <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
-                            <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${item.uid}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition">
-                                Edit
+                        <td class="px-4 py-3 font-mono text-gray-600 text-right">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${displayUnit}</span></td>
+                        <td class="px-4 py-3 font-bold text-gray-900 text-right">${roundedLiveValue} €</td>
+                        
+                        <td class="px-4 py-3 text-center whitespace-nowrap">
+                            <button onclick="toggleDetailsRow('${safeUid}', '${safeAltCode}', '${safeSerialNumber}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs py-1 px-3 rounded border border-gray-300 transition">
+                                Détails
                             </button>
-                            <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-2 rounded border border-red-200 transition">
-                                Purge
-                            </button>
+                        </td>
+                    </tr>
+                    
+					<tr id="details-row-${item.uid}" class="hidden bg-slate-50/70">
+                        <td colspan="7" class="px-6 py-4 border-t border-b border-dashed border-gray-200">
+                            <div class="grid grid-cols-1 sm:grid-cols-4 gap-x-8 gap-y-2 text-gray-600 text-xs">
+                                <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.uid || 'ID'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${item.uid || ''}</code></div>
+                                <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.alt_code || 'Backup Code'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${safeAltCode}</code></div>
+                                <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.serial_number || 'Serial Number'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${safeSerialNumber || '-'}</code></div>
+                                <div>
+                                    <span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.current_cost_time || 'Current Cost Time'}:</span>
+                                    <span class="text-slate-500 font-mono">
+                                        ${item.current_cost_time ? new Date(item.current_cost_time).toLocaleString(userLocale) : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td colspan="2" class="px-6 py-4 border-t border-b border-dashed border-gray-200 text-right text-xs whitespace-nowrap">
+                            <div class="inline-flex items-center gap-2">
+                                <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${safeUid}')" class="bg-white hover:bg-gray-100 text-slate-600 font-medium py-1 px-3 rounded border border-gray-300 shadow-sm transition">
+                                    Edit Qty
+                                </button>
+                                <button onclick="purgeHardware('${safeUid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-1 px-3 rounded border border-red-200 shadow-sm transition">
+                                    Purge
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
@@ -375,7 +408,7 @@
             if (data.summary_totals) {
                 let html = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">`;
                 for (const [group, total] of Object.entries(data.summary_totals)) {
-                    const roundedTotal = Math.round(Number(total)).toLocaleString('en-US');
+                    const roundedTotal = Math.round(Number(total)).toLocaleString(userLocale);;
                     html += `
                         <div class="p-4 bg-slate-50 rounded-xl border border-gray-100 flex flex-col justify-between">
                             <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Group [${group}]</span>
@@ -394,16 +427,47 @@
         }
     }
 
-    function enableQtyEdit(uid) {
+	function enableQtyEdit(uid) {
         const container = document.getElementById(`qty-container-${uid}`);
-        const currentQty = document.getElementById(`qty-text-${uid}`).innerText;
+        const currentQtyText = document.getElementById(`qty-text-${uid}`).innerText;
         
-        container.innerHTML = `<input type="number" id="input-qty-${uid}" value="${currentQty}" class="w-20 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-slate-500">`;
+        // CORRECTION : Le regex /\s| /g nettoie à la fois l'espace classique ET l'espace insécable de la locale
+        const cleanValue = currentQtyText.replace(/\s| /g, '').replace(',', '.');
+        
+        container.innerHTML = `<input type="number" step="any" id="input-qty-${uid}" value="${cleanValue}" class="w-24 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-sm text-right focus:outline-none focus:ring-1 focus:ring-slate-500">`;
         
         const editBtn = document.getElementById(`btn-edit-${uid}`);
         editBtn.innerText = "Save";
         editBtn.className = "bg-green-50 hover:bg-green-100 text-green-700 font-medium text-xs py-1 px-2 rounded border border-green-200 transition";
         editBtn.setAttribute("onclick", `saveQtyChanges('${uid}')`);
+
+        let cancelBtn = document.getElementById(`btn-cancel-${uid}`);
+        if (!cancelBtn) {
+            cancelBtn = document.createElement('button');
+            cancelBtn.id = `btn-cancel-${uid}`;
+            cancelBtn.innerText = "Cancel";
+            cancelBtn.className = "ml-1 bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition";
+            cancelBtn.setAttribute("onclick", `cancelQtyEdit('${uid}', '${currentQtyText}')`);
+            editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
+        }
+    }
+
+	function cancelQtyEdit(uid, originalQty) {
+        // 1. On remet le texte de la quantité d'origine
+        const container = document.getElementById(`qty-container-${uid}`);
+        container.innerHTML = `<span id="qty-text-${uid}">${originalQty}</span>`;
+        
+        // 2. On restaure le bouton "Edit Qty" d'origine
+        const editBtn = document.getElementById(`btn-edit-${uid}`);
+        editBtn.innerText = "Edit Qty";
+        editBtn.className = "bg-white hover:bg-gray-100 text-slate-600 font-medium py-1 px-3 rounded border border-gray-300 shadow-sm transition";
+        editBtn.setAttribute("onclick", `enableQtyEdit('${uid}')`);
+        
+        // 3. On supprime le bouton "Cancel" devenu inutile
+        const cancelBtn = document.getElementById(`btn-cancel-${uid}`);
+        if (cancelBtn) {
+            cancelBtn.remove();
+        }
     }
 
     async function saveQtyChanges(uid) {
@@ -503,6 +567,13 @@
     
     function hideError() { 
         document.getElementById('error-msg').classList.add('hidden'); 
+    }
+	
+	function toggleDetailsRow(uid) {
+        const detailsRow = document.getElementById(`details-row-${uid}`);
+        if (detailsRow) {
+            detailsRow.classList.toggle('hidden');
+        }
     }
 </script>
 </body>
