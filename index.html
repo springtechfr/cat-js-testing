@@ -18,7 +18,7 @@
     <div id="login-screen" class="hidden max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
         <div class="mb-6">
             <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 text-slate-700 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke-currentColor" class="w-6 h-6">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
                 </svg>
             </div>
@@ -61,7 +61,11 @@
                 
                 <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                <input type="number" step="0.01" id="add-cost" placeholder="Unit Purchase Cost" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
+                <div class="flex gap-1">
+                    <input type="number" step="0.01" id="add-cost" placeholder="Unit Cost" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                    <select id="add-currency" class="border border-gray-200 rounded-lg px-1 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
@@ -108,11 +112,12 @@
         };
     }
 
-    // Protection par détection de préfixe (évite d'écrire "CASH" dans le code)
+    // Toggle specific structural metadata masks based on the catalog nomenclature rule (CA)
     function handleTypeChange() {
         const typeSelect = document.getElementById('add-type');
         const codeInput = document.getElementById('add-code');
         const altCodeInput = document.getElementById('add-alt-code');
+        const currencySelect = document.getElementById('add-currency');
         
         if (typeSelect.value && typeSelect.value.startsWith('CA')) {
             codeInput.disabled = true;
@@ -121,9 +126,17 @@
             altCodeInput.value = '';
             codeInput.placeholder = "N/A";
             altCodeInput.placeholder = "N/A";
+            currencySelect.disabled = false;
+            currencySelect.classList.remove('bg-gray-100', 'text-gray-400');
         } else {
             codeInput.disabled = false;
             altCodeInput.disabled = false;
+            
+            // Revert configuration settings to global reference base
+            if (dictionary && dictionary.currencies && dictionary.currencies.length > 0) {
+                currencySelect.value = dictionary.currencies[0]; 
+            }
+            
             if (dictionary && dictionary.fields) {
                 codeInput.placeholder = dictionary.fields.model_code;
                 altCodeInput.placeholder = dictionary.fields.alt_code;
@@ -239,7 +252,7 @@
                     arrayData.forEach(item => {
                         const opt = document.createElement('option');
                         opt.value = item;
-                        opt.innerText = item; // Affiche "CASH" dynamiquement si l'API l'envoie
+                        opt.innerText = item; 
                         selectElement.appendChild(opt);
                     });
                 }
@@ -248,6 +261,7 @@
             populateSelect('add-region', dictionary.regions);
             populateSelect('add-group-id', dictionary.groups);
             populateSelect('add-type', dictionary.categories);
+            populateSelect('add-currency', dictionary.currencies); 
 
             handleTypeChange();
             return true;
@@ -302,10 +316,10 @@
                 const rawValue = item.live_value ? Number(item.live_value) : 0;
                 const roundedLiveValue = Math.round(rawValue).toLocaleString('en-US');
 
-                // Utilisation sélective du préfixe pour masquer le code technique si nécessaire
                 const isSecuredType = item.type && item.type.startsWith('CA');
                 const displayCode = isSecuredType ? item.type : (item.model_code || '-');
                 const displayAltCode = isSecuredType ? item.type : (item.alt_code || '-');
+                const displayUnit = item.base_unit || 'EUR';
 
                 tbody.innerHTML += `
                     <tr class="hover:bg-gray-50/70 transition duration-150">
@@ -321,7 +335,7 @@
                             <span id="qty-text-${item.uid}">${item.unit_count || 0}</span>
                         </td>
                         
-                        <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${item.base_unit || 'EUR'}</span></td>
+                        <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${displayUnit}</span></td>
                         <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
                         <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
                         <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
@@ -400,6 +414,8 @@
 
     async function submitHardware() {
         hideError();
+        const currencySelect = document.getElementById('add-currency');
+        
         const payload = {
             uid: document.getElementById('add-uid').value,
             group_id: document.getElementById('add-group-id').value,
@@ -410,7 +426,8 @@
             model_code: document.getElementById('add-code').value,
             alt_code: document.getElementById('add-alt-code').value,
             serial_number: document.getElementById('add-serial').value,
-            region: document.getElementById('add-region').value
+            region: document.getElementById('add-region').value,
+            custom_currency: currencySelect.value 
         };
 
         try {
