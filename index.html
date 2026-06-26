@@ -34,6 +34,8 @@
         </div>
     </div>
 
+    <div id="error-msg" class="hidden my-4 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium transition duration-200"></div>
+
     <div id="app-content" class="hidden space-y-6">
         
         <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -49,16 +51,12 @@
             </div>
         </div>
 
-        <div id="error-msg" class="hidden p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-r shadow-sm font-medium transition duration-200"></div>
-
         <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
             <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
             <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                
                 <select id="add-group-id" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
                 <select id="add-type" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
-                
                 <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <div class="flex gap-1">
@@ -70,16 +68,14 @@
                 <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="text" id="add-alt-code" placeholder="Backup Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 <input type="text" id="add-serial" placeholder="Serial N°" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
-                
                 <select id="add-region" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
-                
                 <button onclick="submitHardware()" class="bg-slate-700 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm">
                     Create
                 </button>
             </div>
         </div>
 
-        <div id="inventory-section" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <div id="inventory-section" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="p-5 border-b border-gray-100">
                 <h2 id="table-header" class="text-lg font-bold text-gray-900">...</h2>
             </div>
@@ -93,7 +89,7 @@
             </div>
         </div>
 
-        <div id="summary-section" class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div id="summary-section" class="hidden bg-white p-6 rounded-xl shadow-sm border border-gray-100">
             <h2 id="summary-header" class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">...</h2>
             <div id="summary-content" class="text-gray-600"></div>
         </div>
@@ -102,7 +98,6 @@
 
 <script>
     const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats"; 
-
     let dictionary = null;
 
     function getSecureHeaders() {
@@ -112,52 +107,70 @@
         };
     }
 
+    // --- SÉCURISATION DU CYCLE DE DÉMARRAGE (BOOT SEQUENCE) ---
     window.addEventListener('DOMContentLoaded', async () => {
+        // Initialisation de la date du jour
         document.getElementById('date-filter').value = new Date().toISOString().split('T')[0];
         
         const savedPassword = localStorage.getItem('parc_password');
         const loginTimestamp = localStorage.getItem('parc_login_time');
         const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
 
+        // Si une session valide existe localement, on tente de charger le dictionnaire directement
         if (savedPassword && loginTimestamp && (Date.now() - loginTimestamp < oneWeekInMs)) {
-            const authorized = await loadDictionary();
-            if (authorized) { 
-                showApp(); 
-                return; 
+            try {
+                const isConfigLoaded = await loadDictionary();
+                if (isConfigLoaded) { 
+                    showAppScreen(); 
+                    return; 
+                }
+            } catch (err) {
+                console.error("Boot routine exception caught:", err);
             }
         }
         
-        logoutSilently();
-        document.getElementById('loading-screen').classList.add('hidden');
-        document.getElementById('login-screen').classList.remove('hidden');
+        // Sécurité critique : Si pas de session ou si loadDictionary échoue, on bascule obligatoirement sur l'écran Login
+        showLoginScreen();
     });
 
     async function loginWithPassword() {
         const password = document.getElementById('secret-input').value;
         if (!password) return;
         hideError();
+        
+        // Affichage du spinner pendant la tentative d'authentification
+        document.getElementById('loading-screen').classList.remove('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
 
         try {
             localStorage.setItem('parc_password', password);
             localStorage.setItem('parc_login_time', Date.now().toString());
 
-            const authorized = await loadDictionary();
-            if (authorized) { 
-                showApp(); 
+            const isConfigLoaded = await loadDictionary();
+            if (isConfigLoaded) { 
+                showAppScreen(); 
             } else { 
-                throw new Error("Invalid operational configuration password or network negotiation rejected."); 
+                throw new Error("Invalid credentials or configuration validation handshake rejected."); 
             }
         } catch (err) {
-            logoutSilently();
-            showError(err.message || "Network authorization validation handshake failed.");
+            showLoginScreen();
+            showError(err.message || "Network negotiation failure.");
         }
     }
 
-    function showApp() {
+    // Gestion propre des affichages d'écrans pour casser les scénarios de gel (stuck)
+    function showAppScreen() {
         document.getElementById('loading-screen').classList.add('hidden');
         document.getElementById('login-screen').classList.add('hidden');
         document.getElementById('app-content').classList.remove('hidden');
         loadInventoryData();
+    }
+
+    function showLoginScreen() {
+        logoutSilently();
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
     }
 
     function logoutSilently() {
@@ -173,17 +186,23 @@
     async function loadDictionary() {
         try {
             const response = await fetch(`${API_ROUTE}?action=config`, { method: 'GET', headers: getSecureHeaders() });
-            if (!response.ok) return false;
+            
+            if (!response.ok) {
+                if(response.status === 401 || response.status === 403) {
+                    return false; // Mauvais mot de passe détecté par l'API gateway
+                }
+                throw new Error(`Server configuration failure (Status: ${response.status})`);
+            }
             
             dictionary = await response.json();
             
+            // Remplissage dynamique des textes issus de l'API
             document.getElementById('page-title').innerText = dictionary.titles.app_title;
             document.getElementById('app-title').innerText = dictionary.titles.app_title;
             document.getElementById('table-header').innerText = dictionary.titles.table_header;
             document.getElementById('summary-header').innerText = dictionary.titles.summary_header;
             
             const fields = dictionary.fields;
-            
             document.getElementById('table-head-row').innerHTML = `
                 <th class="px-4 py-3">${fields.uid}</th><th class="px-4 py-3">${fields.group_id}</th>
                 <th class="px-4 py-3">${fields.type}</th><th class="px-4 py-3">${fields.model_name}</th>
@@ -202,7 +221,6 @@
             document.getElementById('add-alt-code').placeholder = fields.alt_code;
             document.getElementById('add-serial').placeholder = fields.serial_number;
 
-            // Helper function to build select nodes dynamically from arrays
             const populateSelect = (elementId, arrayData) => {
                 const selectElement = document.getElementById(elementId);
                 selectElement.innerHTML = "";
@@ -216,15 +234,15 @@
                 }
             };
 
-            // Dynamically constructing all backend configuration driven dropdown systems
             populateSelect('add-region', dictionary.regions);
             populateSelect('add-group-id', dictionary.groups);
             populateSelect('add-type', dictionary.categories);
-            populateSelect('add-base-unit', dictionary.currencies); // Injection dynamique de l'array devises
+            populateSelect('add-base-unit', dictionary.currencies);
 
             return true;
         } catch (err) { 
-            return false; 
+            console.error("Failed to parse config schema payload:", err);
+            throw err; // On propage l'erreur pour forcer le basculement en écran de login avec erreur
         }
     }
 
@@ -235,7 +253,7 @@
         const summarySection = document.getElementById('summary-section');
         const chosenDate = document.getElementById('date-filter').value;
         
-        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Aligning and syncing hardware...</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Aligning and syncing data...</td></tr>`;
 
         try {
             const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
@@ -261,8 +279,8 @@
             tbody.innerHTML = "";
             
             if (!data.inventory || data.inventory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400">No hardware found for this date.</td></tr>`;
-                summaryDiv.innerHTML = `<p class="text-gray-400 italic">No historical data consolidated.</p>`;
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400">No assets found for this date.</td></tr>`;
+                summaryDiv.innerHTML = `<p class="text-gray-400 italic">No operational metrics consolidated.</p>`;
                 return;
             }
 
@@ -282,21 +300,15 @@
                         <td class="px-4 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${item.model_code || '-'}</code></td>
                         <td class="px-4 py-3 text-xs text-gray-500">${item.alt_code || '-'}</td>
                         <td class="px-4 py-3 text-xs font-bold text-slate-500">${item.region || 'NONE'}</td>
-                        
                         <td class="px-4 py-3 font-mono text-gray-600" id="qty-container-${item.uid}">
                             <span id="qty-text-${item.uid}">${item.unit_count || 0}</span>
                         </td>
-                        
                         <td class="px-4 py-3 font-mono text-gray-600">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${item.base_unit || ''}</span></td>
                         <td class="px-4 py-3 text-xs text-gray-500 font-mono">${item.serial_number || '-'}</td>
                         <td class="px-4 py-3 font-bold text-gray-900">${roundedLiveValue} €</td>
                         <td class="px-4 py-3 text-center space-x-1 whitespace-nowrap">
-                            <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${item.uid}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition">
-                                Edit
-                            </button>
-                            <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-2 rounded border border-red-200 transition">
-                                Purge
-                            </button>
+                            <button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${item.uid}')" class="bg-slate-50 hover:bg-slate-100 text-slate-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition">Edit</button>
+                            <button onclick="purgeHardware('${item.uid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-xs py-1 px-2 rounded border border-red-200 transition">Purge</button>
                         </td>
                     </tr>
                 `;
@@ -328,7 +340,6 @@
     function enableQtyEdit(uid) {
         const container = document.getElementById(`qty-container-${uid}`);
         const currentQty = document.getElementById(`qty-text-${uid}`).innerText;
-        
         container.innerHTML = `<input type="number" id="input-qty-${uid}" value="${currentQty}" class="w-20 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-sm focus:outline-none focus:ring-1 focus:ring-slate-500">`;
         
         const editBtn = document.getElementById(`btn-edit-${uid}`);
@@ -346,23 +357,17 @@
             return;
         }
 
-        const payload = {
-            uid: uid,
-            unit_count: updatedQty
-        };
-
         try {
             const response = await fetch(`${API_ROUTE}?action=push`, {
                 method: 'POST',
                 headers: getSecureHeaders(),
-                body: JSON.stringify(payload)
+                body: JSON.stringify({ uid: uid, unit_count: updatedQty })
             });
 
             if(!response.ok) {
                 const fault = await response.json();
                 throw new Error(fault.error || "Failed to update quantity.");
             }
-
             loadInventoryData();
         } catch (err) {
             showError(err.message);
@@ -378,7 +383,7 @@
             model_name: document.getElementById('add-name').value,
             unit_count: document.getElementById('add-qty').value,
             base_cost: document.getElementById('add-cost').value,
-            base_unit: document.getElementById('add-base-unit').value,  # Inclusion de la devise choisie
+            base_unit: document.getElementById('add-base-unit').value,
             model_code: document.getElementById('add-code').value,
             alt_code: document.getElementById('add-alt-code').value,
             serial_number: document.getElementById('add-serial').value,
@@ -400,7 +405,6 @@
             ['add-uid', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
                 document.getElementById(id).value = "";
             });
-
             loadInventoryData();
         } catch (err) {
             showError(err.message);
@@ -420,9 +424,8 @@
 
             if(!response.ok) {
                 const fault = await response.json();
-                throw new Error(fault.error || "Failed to remove database hardware entity records.");
+                throw new Error(fault.error || "Failed to remove database asset record.");
             }
-
             loadInventoryData();
         } catch (err) {
             showError(err.message);
