@@ -52,7 +52,7 @@
         </div>
 
         <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
-            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
+            <h3 id="register-hardware-title" class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
             <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
                 <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
                 
@@ -242,6 +242,7 @@
             
             document.getElementById('page-title').innerText = dictionary.titles.app_title;
             document.getElementById('app-title').innerText = dictionary.titles.app_title;
+			document.getElementById('register-hardware-title').innerText = dictionary.titles.register_new_hardware;
             document.getElementById('table-header').innerText = dictionary.titles.table_header;
             document.getElementById('summary-header').innerText = dictionary.titles.summary_header;
             
