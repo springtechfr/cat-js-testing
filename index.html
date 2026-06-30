@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Fleet Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans min-h-screen">
+
+<div class="max-w-6xl mx-auto">
+    
+    <div id="loading-screen" class="flex flex-col items-center justify-center mt-32 space-y-4">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-700"></div>
+        <p class="text-gray-500 italic">Verifying session status...</p>
+    </div>
+
+    <div id="login-screen" class="hidden max-w-md mx-auto mt-20 bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
+        <div class="mb-6">
+            <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 text-slate-700 mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
+                </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900">System Authentication</h2>
+            <p class="text-gray-400 text-sm mt-1">Enter password to unlock operational controls.</p>
+        </div>
+        <div class="space-y-4">
+            <input type="password" id="secret-input" placeholder="System password..." 
+                   class="w-full px-4 py-3 border border-gray-200 rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-slate-500">
+            <button onclick="loginWithPassword()" class="w-full bg-slate-700 hover:bg-slate-800 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 shadow-sm">
+                Login
+            </button>
+        </div>
+    </div>
+
+	<div id="error-msg" class="hidden max-w-6xl mx-auto mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between shadow-sm">
+		<span id="error-text"></span>
+		<button onclick="hideError()" class="text-red-400 hover:text-red-600 transition-colors focus:outline-none ml-3" title="Fermer">
+			<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+			</svg>
+		</button>
+	</div>
+
+    <div id="app-content" class="hidden space-y-4">
+        
+        <div class="bg-white p-4 shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between gap-4">
+            <h1 id="app-title" class="text-2xl font-bold text-gray-900 tracking-tight">Equipment Fleet Management</h1>
+            <div class="flex items-center gap-4 w-full sm:w-auto justify-end">
+                <div class="flex items-center gap-2">
+                    <label for="date-filter" class="text-sm font-medium text-gray-500 whitespace-nowrap">Date:</label>
+                    <input type="date" id="date-filter" onchange="loadInventoryData()" class="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                </div>
+                <button onclick="logout()" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium text-sm py-1.5 px-4 rounded-lg transition duration-200 border border-red-200">
+                    Sign Out
+                </button>
+            </div>
+        </div>
+
+        <div id="summary-section" class="bg-white p-4 shadow-sm border border-gray-100">
+            <h2 id="summary-header" class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">...</h2>
+            <div id="summary-content"></div>
+        </div>
+
+        <div id="create-hardware-block" class="hidden bg-white p-5 rounded-xl shadow-sm border border-gray-100 space-y-4">
+            <h3 id="register-hardware-title" class="text-sm font-bold text-gray-900 uppercase tracking-wider">Register New Hardware</h3>
+            <div class="grid grid-cols-2 md:grid-cols-6 gap-3">
+                <input type="text" id="add-uid" placeholder="UID" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
+                <select id="add-group-id" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                <select id="add-type" onchange="handleTypeChange()" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                
+                <input type="text" id="add-name" placeholder="Model Name" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                <input type="number" id="add-qty" placeholder="Quantity" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500">
+                
+                <div class="flex gap-1">
+                    <input type="number" step="0.01" id="add-cost" placeholder="Unit Cost" class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                    <select id="add-base-unit" class="border border-gray-200 rounded-lg px-1 py-2 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-slate-500"></select>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input type="text" id="add-code" placeholder="Model Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                <input type="text" id="add-alt-code" placeholder="Backup Code" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                <input type="text" id="add-serial" placeholder="Serial N°" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400">
+                
+                <select id="add-region" class="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-500 disabled:bg-gray-100 disabled:text-gray-400"></select>
+                
+				<button onclick="submitHardware()" class="bg-slate-800 hover:bg-slate-900 text-white font-medium rounded-lg text-sm py-2 px-4 transition duration-200 shadow-sm w-full md:w-auto">
+					Create
+				</button>
+            </div>
+        </div>
+
+        <div id="inventory-section" class="bg-white shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h2 id="table-header" class="text-lg font-bold text-gray-900">...</h2>
+				<button onclick="toggleCreateBlock()" class="inline-flex items-center gap-1.5 bg-slate-700 hover:bg-slate-800 text-white font-medium text-xs py-1.5 px-3 rounded-lg transition duration-200 shadow-sm">
+					<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-3.5 h-3.5">
+						<path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+					</svg>
+					<span id="add-hardware-text">Add</span>
+				</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr id="table-head-row" class="bg-slate-700 text-white text-xs font-semibold uppercase tracking-wider"></tr>
+                    </thead>
+                    <tbody id="inventory-tbody" class="divide-y divide-gray-100 text-sm"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    const API_ROUTE = "https://vi1ch5yfp2.execute-api.eu-west-1.amazonaws.com/dev/cats"; 
+    let dictionary = null;
+	const userLocale = navigator.language || "fr-FR";
+
+    function getSecureHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'X-Poste-Config': localStorage.getItem('parc_password') || ''
+        };
+    }
+
+    function handleTypeChange() {
+        const typeSelect = document.getElementById('add-type');
+        const codeInput = document.getElementById('add-code');
+        const altCodeInput = document.getElementById('add-alt-code');
+        const baseUnitSelect = document.getElementById('add-base-unit');
+        const costInput = document.getElementById('add-cost');
+        const serialInput = document.getElementById('add-serial');
+        const regionSelect = document.getElementById('add-region');
+
+        if (typeSelect.value && typeSelect.value.startsWith('CA')) {
+            codeInput.disabled = true;
+            codeInput.value = '';
+            codeInput.placeholder = "N/A";
+
+            altCodeInput.disabled = true;
+            altCodeInput.value = '';
+            altCodeInput.placeholder = "N/A";
+
+            costInput.disabled = true;
+            costInput.value = '';
+            costInput.placeholder = "N/A";
+
+            serialInput.disabled = true;
+            serialInput.value = '';
+            serialInput.placeholder = "N/A";
+
+            regionSelect.disabled = true;
+            regionSelect.value = "NONE";
+            
+            baseUnitSelect.disabled = false;
+            baseUnitSelect.classList.remove('bg-gray-100', 'text-gray-400');
+        } else {
+            codeInput.disabled = false;
+            altCodeInput.disabled = false;
+            costInput.disabled = false;
+			serialInput.disabled = false;
+			regionSelect.disabled = false;
+			
+            if (dictionary && dictionary.base_units && dictionary.base_units.length > 0) {
+                baseUnitSelect.value = dictionary.base_units[0]; 
+            }
+            
+            if (dictionary && dictionary.fields) {
+                codeInput.placeholder = dictionary.fields.model_code;
+                altCodeInput.placeholder = dictionary.fields.alt_code;
+				costInput.placeholder = dictionary.fields.base_cost;
+                serialInput.placeholder = dictionary.fields.serial_number;
+            }
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+		ajusterEtBriderDateWeekEnd();        
+        
+		const savedPassword = localStorage.getItem('parc_password');
+        const loginTimestamp = localStorage.getItem('parc_login_time');
+        const oneWeekInMs = 7 * 24 * 60 * 60 * 1000; 
+
+        if (savedPassword && loginTimestamp && (Date.now() - loginTimestamp < oneWeekInMs)) {
+            try {
+                const authorized = await loadDictionary();
+                if (authorized) { 
+                    showApp(); 
+                    return; 
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+        showLogin();
+    });
+
+    async function loginWithPassword() {
+        const password = document.getElementById('secret-input').value;
+        if (!password) return;
+        hideError();
+
+        document.getElementById('loading-screen').classList.remove('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
+
+        try {
+            localStorage.setItem('parc_password', password);
+            localStorage.setItem('parc_login_time', Date.now().toString());
+
+            const authorized = await loadDictionary();
+            if (authorized) { 
+                showApp(); 
+            } else { 
+                throw new Error("Invalid credentials."); 
+            }
+        } catch (err) {
+            showLogin();
+            showError(err.message || "Authentication failed.");
+        }
+    }
+
+    function showApp() {
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
+        loadInventoryData();
+    }
+
+    function showLogin() {
+        logoutSilently();
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.add('hidden');
+        document.getElementById('login-screen').classList.remove('hidden');
+    }
+
+    function logoutSilently() {
+        localStorage.removeItem('parc_password');
+        localStorage.removeItem('parc_login_time');
+    }
+
+    function logout() { 
+        logoutSilently(); 
+        window.location.reload(); 
+    }
+
+    async function loadDictionary() {
+        try {
+            const response = await fetch(`${API_ROUTE}?action=config`, { method: 'GET', headers: getSecureHeaders() });
+            if (!response.ok) return false;
+            
+            dictionary = await response.json();
+            
+            document.getElementById('page-title').innerText = dictionary.titles.app_title;
+            document.getElementById('app-title').innerText = dictionary.titles.app_title;
+			document.getElementById('register-hardware-title').innerText = dictionary.titles.register_new_hardware;
+			document.getElementById('add-hardware-text').innerText = dictionary.titles.register_new_hardware;
+            document.getElementById('table-header').innerText = dictionary.titles.table_header;
+            document.getElementById('summary-header').innerText = dictionary.titles.summary_header;
+            
+            const fields = dictionary.fields;
+            
+            document.getElementById('table-head-row').innerHTML = `
+                <th class="px-4 py-3">${fields.type}</th>
+				<th class="px-4 py-3">${fields.model_name}</th>
+                <th class="px-4 py-3">${fields.model_code}</th>
+                <th class="px-4 py-3">${fields.region}</th>
+                <th class="px-4 py-3 text-right">${fields.unit_count}</th>
+				<th class="px-4 py-3 text-right">${fields.current_cost}</th>
+                <th class="px-4 py-3 text-right">${fields.live_value}</th>
+                <th class="px-4 py-3 text-center">Détails</th>
+            `;
+
+            document.getElementById('add-uid').placeholder = fields.uid;
+            document.getElementById('add-name').placeholder = fields.model_name;
+            document.getElementById('add-qty').placeholder = fields.unit_count;
+            document.getElementById('add-cost').placeholder = fields.base_cost;
+            document.getElementById('add-code').placeholder = fields.model_code;
+            document.getElementById('add-alt-code').placeholder = fields.alt_code;
+            document.getElementById('add-serial').placeholder = fields.serial_number;
+
+            const populateSelect = (elementId, arrayData) => {
+                const selectElement = document.getElementById(elementId);
+                selectElement.innerHTML = "";
+                if (arrayData) {
+                    arrayData.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = item;
+                        opt.innerText = item; 
+                        selectElement.appendChild(opt);
+                    });
+                }
+            };
+
+            populateSelect('add-region', dictionary.regions);
+            populateSelect('add-group-id', dictionary.groups);
+            populateSelect('add-type', dictionary.categories);
+            populateSelect('add-base-unit', dictionary.base_units); 
+
+            handleTypeChange();
+            return true;
+        } catch (err) { 
+            return false; 
+        }
+    }
+
+	async function loadInventoryData() {
+        const tbody = document.getElementById('inventory-tbody');
+        const summaryDiv = document.getElementById('summary-content');
+        const inventorySection = document.getElementById('inventory-section');
+        const summarySection = document.getElementById('summary-section');
+        const chosenDate = document.getElementById('date-filter').value;
+        
+        tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400 italic bg-gray-50/50">Syncing...</td></tr>`;
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=list&date=${chosenDate}`, { method: 'GET', headers: getSecureHeaders() });
+            if (response.status === 401 || response.status === 403) { 
+                logout(); 
+                return; 
+            }
+            
+            const data = await response.json();
+            const fields = dictionary.fields;
+
+            if (!response.ok) {
+                showError(data.message || `Error (${response.status})`);
+                tbody.innerHTML = "";
+                summaryDiv.innerHTML = "";
+                inventorySection.classList.add('hidden');
+                summarySection.classList.add('hidden');
+                return;
+            }
+            
+            if (data.warning_message) {
+                showError(data.warning_message);
+            }
+
+            inventorySection.classList.remove('hidden');
+            summarySection.classList.remove('hidden');
+            tbody.innerHTML = "";
+            
+            if (!data.inventory || data.inventory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-gray-400">No item found for this date.</td></tr>`;
+                summaryDiv.innerHTML = `<p class="text-gray-400 italic">No data consolidated.</p>`;
+                return;
+            }
+
+            // Appel des fonctions spécialisées pour le rendu
+            renderSummary(data.summary_totals, summaryDiv);
+            groupAndRenderInventory(data.inventory, fields, tbody);
+
+        } catch (err) {
+            showError(err.message);
+            tbody.innerHTML = `<tr><td colspan="12" class="text-center py-8 text-red-500 font-medium">Error loading data.</td></tr>`;
+            summaryDiv.innerHTML = "";
+            inventorySection.classList.add('hidden');
+            summarySection.classList.add('hidden');
+        }
+    }
+
+	function groupAndRenderInventory(inventory, fields, tbody) {
+        // 1. Regroupement par group_id
+        const groups = {};
+        inventory.forEach(item => {
+            const groupId = item.group_id || 'Global';
+            if (!groups[groupId]) {
+                groups[groupId] = { items: [], totalValue: 0 };
+            }
+            groups[groupId].items.push(item);
+            groups[groupId].totalValue += item.live_value ? Number(item.live_value) : 0;
+        });
+
+        // 2. Rendu HTML dans le tbody
+        let isFirstGroup = true;
+
+        for (const [groupId, groupData] of Object.entries(groups)) {
+            const formattedGroupTotal = Math.round(groupData.totalValue).toLocaleString(userLocale);
+
+            // Si ce n'est pas le premier groupe, on ajoute un espace léger pour séparer les blocs
+            if (!isFirstGroup) {
+                tbody.innerHTML += `<tr class="h-6 bg-transparent"><td colspan="8"></td></tr>`;
+            }
+            isFirstGroup = false;
+
+            // En-tête du groupe avec le titre à gauche et le total à droite sur la même ligne
+            tbody.innerHTML += `
+                <tr class="bg-slate-100/90 border-b border-gray-200 font-bold text-slate-800 rounded-t-lg">
+                    <td colspan="2" class="px-4 py-2.5 tracking-wide">
+                        ${groupId}
+                    </td>
+                    <td class="px-4 py-2.5 font-bold text-slate-900 text-right whitespace-nowrap">
+                        Total : ${formattedGroupTotal} €
+                    </td>
+                    <td colspan="5"></td>
+                </tr>
+            `;
+
+            // Lignes enfants des équipements associés à ce groupe
+            groupData.items.forEach(item => {
+                const rawCost = item.current_cost ? Number(item.current_cost) : 0;
+                const formattedCost = rawCost.toLocaleString(userLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                
+                const rawValue = item.live_value ? Number(item.live_value) : 0;
+                const roundedLiveValue = Math.round(rawValue).toLocaleString(userLocale);
+                
+                const rawQty = item.unit_count ? Number(item.unit_count) : 0;
+                const formattedQty = rawQty.toLocaleString(userLocale);
+                
+                const isSecuredType = item.type && item.type.startsWith('CA');
+                const displayCode = isSecuredType ? item.type : (item.model_code || '-');
+                const displayUnit = item.base_unit || 'UNKNOWN';
+                
+                const safeUid = (item.uid || '').replace(/'/g, "\\'");
+                const safeAltCode = (item.alt_code || '-').replace(/'/g, "\\'");
+                const safeSerialNumber = (item.serial_number || '-').replace(/'/g, "\\'");
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/70 transition duration-150 border-b border-gray-100 bg-white">
+                        <td class="px-4 py-3"><span class="inline-flex text-xs font-medium text-blue-700">${item.type || ''}</span></td>
+                        <td class="px-3 py-3 text-gray-900" id="name-container-${item.uid}">
+							<span id="name-text-${item.uid}">${item.model_name || ''}</span>
+						</td>
+                        <td class="px-3 py-3 text-gray-900 text-right">${roundedLiveValue} €</td>
+                        <td class="px-3 py-3"><code class="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">${displayCode}</code></td>
+                        <td class="px-3 py-3 text-xs font-bold text-slate-500">${item.region || 'NONE'}</td>
+
+                        <td class="px-3 py-3 font-mono text-gray-600 text-right" id="qty-container-${item.uid}">
+                            <span id="qty-text-${item.uid}">${formattedQty}</span>
+                        </td>
+                        <td class="px-3 py-3 font-mono text-gray-600 text-right">${formattedCost} <span class="text-xs font-bold text-slate-400 ml-0.5">${displayUnit}</span></td>
+                        <td class="px-3 py-3 text-center whitespace-nowrap">
+                            <button onclick="toggleDetailsRow('${safeUid}', '${safeAltCode}', '${safeSerialNumber}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-xs py-1 px-3 rounded border border-gray-300 transition">
+                                Détails
+                            </button>
+                        </td>
+                    </tr>
+                    
+                    <tr id="details-row-${item.uid}" class="hidden bg-slate-50/70">
+                        <td colspan="6" class="px-6 py-4 border-t border-b border-dashed border-gray-200">
+                            <div class="grid grid-cols-1 sm:grid-cols-4 gap-x-8 gap-y-2 text-gray-600 text-xs">
+                                <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.uid || 'ID'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${item.uid || ''}</code></div>
+                                <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.alt_code || 'Backup Code'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${safeAltCode}</code></div>
+                                <div><span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.serial_number || 'Serial Number'}:</span> <code class="font-mono bg-white px-1 py-0.5 border border-gray-200 rounded">${safeSerialNumber || '-'}</code></div>
+                                <div>
+                                    <span class="font-bold text-gray-400 uppercase tracking-wide mr-1">${fields.current_cost_time || 'Current Cost Time'}:</span>
+                                    <span class="text-slate-500 font-mono">
+                                        ${item.current_cost_time ? new Date(item.current_cost_time).toLocaleString(userLocale) : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td colspan="2" class="px-6 py-4 border-t border-b border-dashed border-gray-200 text-right text-xs whitespace-nowrap">
+                            <div class="inline-flex items-center gap-2">
+								<button id="btn-edit-${item.uid}" onclick="enableQtyEdit('${safeUid}')" class="bg-white hover:bg-gray-100 text-slate-600 font-medium py-1 px-3 rounded border border-gray-300 shadow-sm transition">
+									Edit
+								</button>
+                                <button onclick="purgeHardware('${safeUid}')" class="bg-red-50 hover:bg-red-100 text-red-600 font-medium py-1 px-3 rounded border border-red-200 shadow-sm transition">
+                                    Purge
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+    }
+
+	function renderSummary(summary, summaryDiv) {
+        summaryDiv.innerHTML = "";
+        if (!summary) return;
+
+        // On récupère le total global brut pour le calcul des pourcentages
+        const rawGrandTotal = summary.total ? Number(summary.total) : 0;
+        let html = `<div class="space-y-6">`;
+
+        // 1. Rendu de la Valeur Totale Globale
+		const total = rawGrandTotal.toLocaleString(userLocale);
+		html += `
+			<div class="flex justify-between items-baseline">
+				<h4 class="text-xs font-bold uppercase tracking-wider">Valeur Totale Globale</h4>
+				<div>
+					<span class="text-xl font-black">${total.toLocaleString('fr-FR')} €</span>
+				</div>
+			</div>
+		`;
+
+        // 2. Rendu des statistiques par Type
+        if (summary.by_type && Object.keys(summary.by_type).length > 0) {
+            let typeHtml = "";
+            for (const [type, total] of Object.entries(summary.by_type)) {
+                const rawTotal = Number(total);
+                const pct = rawGrandTotal > 0 ? ((rawTotal / rawGrandTotal) * 100).toFixed(2) : "0.00";
+                
+                typeHtml += `
+                    <div class="p-3 bg-blue-50/50 rounded-lg border border-blue-100 flex flex-col justify-between">
+                        <span class="text-xs font-semibold text-blue-700 uppercase">${type}</span>
+                        <div class="mt-0.5 flex items-baseline gap-1.5 flex-wrap">
+                            <span class="text-sm font-bold text-slate-800">${rawTotal.toLocaleString(userLocale)} €</span>
+                            <span class="text-xs font-medium text-slate-500">(${pct}%)</span>
+                        </div>
+                    </div>`;
+            }
+            html += `<div>
+                <h4 class="text-xs font-bold uppercase tracking-wider mb-2">Montant par Type</h4>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">${typeHtml}</div>
+            </div>`;
+        }
+
+        // 3. Rendu des statistiques par Région
+		html += renderRegionStats(summary, rawGrandTotal);
+		
+        html += `</div>`;
+        summaryDiv.innerHTML = html;
+    }
+
+	function renderRegionStats(summary, rawGrandTotal) {
+		const transData = summary.by_region_transparency || {};
+		const pureData = summary.by_region || {};
+
+		if (Object.keys(transData).length === 0) return '';
+
+		let transBarsHtml = "";
+		// Grandes barres de progression pour la répartition réelle
+		Object.entries(transData).sort((a, b) => b[1] - a[1]).forEach(([region, val]) => {
+			const rawTotal = Number(val);
+			const pct = rawGrandTotal > 0 ? ((rawTotal / rawGrandTotal) * 100).toFixed(2) : "0.0";
+			const formatted = rawTotal.toLocaleString(userLocale, { maximumFractionDigits: 0 });
+			
+			transBarsHtml += `
+				<div class="space-y-1">
+					<div class="flex justify-between text-sm">
+						<span class="text-xs font-semibold text-blue-700 uppercase">${region}</span>
+						<div class="space-x-1.5 flex items-baseline">
+							<span class="text-sm font-bold text-slate-800">${formatted} €</span>
+							<span class="text-xs font-medium text-slate-500">(${pct}%)</span>
+						</div>
+					</div>
+					<div class="w-full bg-gray-100 rounded-full h-2">
+						<div class="bg-slate-700 h-2 rounded-full" style="width: ${pct}%"></div>
+					</div>
+				</div>`;
+		});
+
+		let pureBadgesHtml = "";
+		// Mini pastilles discrètes pour la vision brute
+		Object.entries(pureData).sort((a, b) => b[1] - a[1]).forEach(([region, val]) => {
+			const rawTotal = Number(val);
+			const pct = rawGrandTotal > 0 ? ((rawTotal / rawGrandTotal) * 100).toFixed(2) : "0";
+			
+			pureBadgesHtml += `
+				<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">
+					${region} : ${pct}%
+				</span>`;
+		});
+
+		return `
+			<div class="bg-white p-3 sm:p-4 rounded-xl border border-gray-100 space-y-4 sm:space-y-5 shadow-sm">
+				<div class="space-y-3">
+					<h4 class="text-xs font-bold uppercase tracking-wider border-b border-gray-50 pb-1.5">
+						Répartition Globale Réelle
+					</h4>
+					<div class="space-y-3">${transBarsHtml}</div>
+				</div>
+				
+				<div class="pt-3 border-t border-gray-100">
+					<span class="text-xs font-bold uppercase tracking-wider block mb-2">
+						Vision brute
+					</span>
+					<div class="flex flex-wrap gap-1.5">${pureBadgesHtml}</div>
+				</div>
+			</div>`;
+	}
+	
+	function enableQtyEdit(uid) {
+        const containerQty = document.getElementById(`qty-container-${uid}`);
+        const currentQtyText = document.getElementById(`qty-text-${uid}`).innerText;
+        const cleanQty = currentQtyText.replace(/\s| /g, '').replace(',', '.');
+        
+        const containerName = document.getElementById(`name-container-${uid}`);
+        const currentNameText = document.getElementById(`name-text-${uid}`).innerText;
+
+        // Injection des inputs dans les conteneurs respectifs
+        containerQty.innerHTML = `<input type="number" step="any" id="input-qty-${uid}" value="${cleanQty}" class="w-24 px-1.5 py-0.5 border border-slate-300 rounded font-mono text-sm text-right focus:outline-none focus:ring-1 focus:ring-slate-500">`;
+        containerName.innerHTML = `<input type="text" id="input-name-${uid}" value="${currentNameText.trim()}" class="w-full max-w-xs px-2 py-0.5 border border-slate-300 rounded text-sm focus:outline-none focus:ring-1 focus:ring-slate-500">`;
+        
+        // Mutation du bouton Edit en Save
+        const editBtn = document.getElementById(`btn-edit-${uid}`);
+        editBtn.innerText = "Save";
+        editBtn.className = "bg-green-50 hover:bg-green-100 text-green-700 font-medium text-xs py-1 px-2 rounded border border-green-200 transition";
+        editBtn.setAttribute("onclick", `saveNameAndQtyChanges('${uid}')`);
+
+        // Ajout du bouton Cancel en lui passant les textes d'origine pour la restauration
+        let cancelBtn = document.getElementById(`btn-cancel-${uid}`);
+        if (!cancelBtn) {
+            cancelBtn = document.createElement('button');
+            cancelBtn.id = `btn-cancel-${uid}`;
+            cancelBtn.innerText = "Cancel";
+            cancelBtn.className = "ml-1 bg-gray-50 hover:bg-gray-100 text-gray-600 font-medium text-xs py-1 px-2 rounded border border-gray-200 transition";
+            // Échappement des guillemets pour éviter de casser le HTML de l'attribut onclick
+            const escapedName = currentNameText.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+            cancelBtn.setAttribute("onclick", `cancelQtyEdit('${uid}', '${currentQtyText}', '${escapedName}')`);
+            editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
+        }
+    }
+
+	function cancelQtyEdit(uid, originalQty, originalModelName) {
+        // 1. Restaure la structure quantité
+        const containerQty = document.getElementById(`qty-container-${uid}`);
+        containerQty.innerHTML = `<span id="qty-text-${uid}">${originalQty}</span>`;
+        
+        // 2. Restaure la structure nom
+        const containerName = document.getElementById(`name-container-${uid}`);
+        containerName.innerHTML = `<span id="name-text-${uid}">${originalModelName}</span>`;
+        
+        // 3. Restaure le bouton "Edit"
+        const editBtn = document.getElementById(`btn-edit-${uid}`);
+        editBtn.innerText = "Edit";
+        editBtn.className = "bg-white hover:bg-gray-100 text-slate-600 font-medium py-1 px-3 rounded border border-gray-300 shadow-sm transition";
+        editBtn.setAttribute("onclick", `enableQtyEdit('${uid}')`);
+        
+        // 4. Supprime le bouton "Cancel"
+        const cancelBtn = document.getElementById(`btn-cancel-${uid}`);
+        if (cancelBtn) {
+            cancelBtn.remove();
+        }
+    }
+
+	async function saveNameAndQtyChanges(uid) {
+        hideError();
+        const updatedQty = document.getElementById(`input-qty-${uid}`).value;
+        const updatedName = document.getElementById(`input-name-${uid}`).value.trim();
+
+        if(!updatedQty || Number(updatedQty) < 0) {
+            showError("Invalid quantity value.");
+            return;
+        }
+        if(!updatedName) {
+            showError("Model name cannot be empty.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=update`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: JSON.stringify({ 
+                    uid: uid, 
+                    unit_count: updatedQty,
+                    model_name: updatedName 
+                })
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Failed to update changes.");
+            }
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    async function submitHardware() {
+        hideError();
+        const baseUnitSelect = document.getElementById('add-base-unit');
+        
+        const payload = {
+            uid: document.getElementById('add-uid').value,
+            group_id: document.getElementById('add-group-id').value,
+            type: document.getElementById('add-type').value,
+            model_name: document.getElementById('add-name').value,
+            unit_count: document.getElementById('add-qty').value,
+            base_cost: document.getElementById('add-cost').value,
+            model_code: document.getElementById('add-code').value,
+            alt_code: document.getElementById('add-alt-code').value,
+            serial_number: document.getElementById('add-serial').value,
+            region: document.getElementById('add-region').value,
+            base_unit: baseUnitSelect.value 
+        };
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=create`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: JSON.stringify(payload)
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Exception during deployment.");
+            }
+
+            ['add-uid', 'add-name', 'add-qty', 'add-cost', 'add-code', 'add-alt-code', 'add-serial'].forEach(id => {
+                document.getElementById(id).value = "";
+            });
+
+            loadInventoryData();
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    async function purgeHardware(targetUid) {
+        if (!confirm(`Confirm irreversible purge sequence for node: ${targetUid}?`)) return;
+        hideError();
+
+        try {
+            const response = await fetch(`${API_ROUTE}?action=purge`, {
+                method: 'POST',
+                headers: getSecureHeaders(),
+                body: JSON.stringify({ target: targetUid })
+            });
+
+            if(!response.ok) {
+                const fault = await response.json();
+                throw new Error(fault.error || "Failed to remove records.");
+            }
+
+            loadInventoryData();
+        } catch (err) {
+            showError(err.message);
+        }
+    }
+
+    function showError(msg) {
+		const errorDiv = document.getElementById('error-msg');
+        const errorText = document.getElementById('error-text');
+        
+        if (errorText && errorDiv) {
+            errorText.innerText = msg; 
+            errorDiv.classList.remove('hidden');
+            // Optionnel : Scrolle automatiquement vers l'erreur pour qu'elle soit visible
+            errorDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+    }
+    
+    function hideError() { 
+		const errorDiv = document.getElementById('error-msg');
+        if (errorDiv) {
+            errorDiv.classList.add('hidden'); 
+        }
+	}
+	
+	function toggleDetailsRow(uid) {
+        const detailsRow = document.getElementById(`details-row-${uid}`);
+        if (detailsRow) {
+            detailsRow.classList.toggle('hidden');
+        }
+    }
+	
+	function ajusterEtBriderDateWeekEnd() {
+		const dateInput = document.getElementById('date-filter');
+		if (!dateInput) return;
+
+		const ramenerAuVendredi = (dateObj) => {
+			const day = dateObj.getDay(); // 0 = Dimanche, 6 = Samedi
+			if (day === 6) dateObj.setDate(dateObj.getDate() - 1);
+			if (day === 0) dateObj.setDate(dateObj.getDate() - 2);
+			return dateObj;
+		};
+
+		// 1. Initialisation au chargement de la page (si week-end -> Vendredi)
+		const initDate = ramenerAuVendredi(new Date());
+		let derniereDateValide = initDate.toISOString().split('T')[0];
+		dateInput.value = derniereDateValide;
+
+		// Sauvegarde de la fonction de rafraîchissement inline définie sur le onchange HTML
+		const inlineOnChange = dateInput.onchange;
+
+		// 2. Interception absolue au moment du CLIC ('input') pour tuer l'action avant le 'change'
+		dateInput.addEventListener('input', (e) => {
+			if (!e.target.value) return;
+			
+			const dateChoisie = new Date(e.target.value);
+			const day = dateChoisie.getDay();
+			
+			if (day === 6 || day === 0) {
+				// Désactive temporairement le comportement onchange pour couper l'appel API
+				dateInput.onchange = null;
+				
+				// Ferme instantanément le calendrier
+				e.target.blur(); 
+				
+				// Remet de force l'ancienne date valide
+				e.target.value = derniereDateValide;
+				
+				// Bloque l'événement
+				e.preventDefault();
+				e.stopPropagation();
+				
+				// Restaure la fonction onchange pour les prochains clics valides
+				setTimeout(() => {
+					dateInput.onchange = inlineOnChange;
+				}, 10);
+				
+				return false;
+			}
+			
+			// Si la date est un jour de semaine valide, on la valide comme nouvelle référence
+			derniereDateValide = e.target.value;
+		}, true); // Le paramètre 'true' active la capture prioritaire
+	}
+	
+	function toggleCreateBlock() {
+		const block = document.getElementById('create-hardware-block');
+		if (block) {
+			block.classList.toggle('hidden');
+			// Optionnel : Scrolle doucement vers le formulaire lorsqu'il s'ouvre
+			if (!block.classList.contains('hidden')) {
+				block.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+			}
+		}
+	}
+</script>
+</body>
+</html>
