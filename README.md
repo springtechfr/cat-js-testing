@@ -1,1 +1,1 @@
-# cat-js-testing
+# cat-js
