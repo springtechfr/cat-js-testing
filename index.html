@@ -662,6 +662,7 @@
                 const fault = await response.json();
                 throw new Error(fault.error || "Failed to update changes.");
             }
+			loadInventoryData();
         } catch (err) {
             showError(err.message);
         }
